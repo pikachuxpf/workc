@@ -7,14 +7,17 @@ description: 通用单题 ClawEval/WorkC 评测标注、返修和 QA 流程。�
 
 ## 核心原则
 
-客户规则和真实题目材料决定测试，不以 Oracle 分数反推规则。Oracle 1.0 只表示被测方案通过了当前测试，不能证明测试符合客户标准；nop 也不要求机械为 0。
+客户最新规则和真实题目材料决定测试，不以 Oracle 分数反推规则。规则冲突时优先级为：客户最新指导文件与明确返修要求 → 当前 `instruction.md` / `persona.md` / fixtures → 同前缀历史基线 → 旧 QA 或既有测试。Oracle 1.0 只表示被测方案通过了当前测试，不能证明测试符合客户标准；nop 也不要求机械为 0。
+
+若客户提供原始 ZIP 或其他冻结包，将其作为不可变内容基线。不得为了提高 Oracle 分数修改标准解、环境、评分器、运行脚本或业务输入，也不得让旧计划中的宽松修改范围覆盖更新后的客户规则。
 
 按以下顺序工作：
 
 ```text
-材料完整性 → 当前题规则 → 同前缀历史基线 → 覆盖矩阵与 A–H 安全分析
-→ rubrics.py → test_outputs.py → 静态合规检查 → 可选 Oracle/nop
-→ 平台检查与提交或内部报告
+材料完整性与冻结基线 → 当前题规则 → 同前缀历史基线
+→ 覆盖矩阵与 A–H 安全分析 → rubrics.py → test_outputs.py
+→ 静态合规检查 → 可选 Oracle/nop → 缓存清理与冻结边界审计
+→ QA 报告同步 → 平台检查与提交或内部报告
 ```
 
 不要为了提高分数删除失败测试、放宽正确条件、篡改真值、伪造 evidence 或修改 nop。
@@ -28,17 +31,19 @@ tests/rubrics.py
 tests/test_outputs.py
 ```
 
-除非用户单独授权，否则不修改：
+除非当前客户规则和用户明确授权，否则不修改：
 
 - `environment/`，包括 `environment/output/summary.json`；
 - `solution/`；
 - fixtures、resources 和原始输入；
 - `instruction.md`、`persona.md`、`ground_truth.json`；
-- scripts、Docker 配置和平台导出的原始文件。
+- `tests/judge.py`、`tests/test.sh`；
+- scripts、Docker 配置、task 配置和平台导出的原始文件；
+- 原测试类名以及客户声明冻结的其他文件。
 
-`summary.json` 通常是被测 Agent 的业务输出，不是 QA 汇总。`QA_REPORT.md` 是可选内部产物；仅在用户或项目明确要求时生成，并以真实磁盘路径为准，不默认放进 `environment/`。
+`summary.json` 通常是被测 Agent 的业务输出，不是 QA 汇总。`qa_report.md` / `QA_REPORT.md` 是可选内部产物；仅在用户或项目明确要求时新增或更新，并以真实磁盘路径为准，不默认放进 `environment/`。
 
-如修改题目运行配置确有必要，先取得针对该目录的明确授权。普通路径、Docker 挂载和 pytest 命令问题应自行排查，但不能借排查改变被测业务数据。
+如修改题目运行配置确有必要，先取得针对该目录的明确授权。普通路径、Docker 挂载、依赖安装和 pytest 命令问题应自行排查，但不能借排查改变被测业务数据。即使冻结 `test.sh` 或 `judge.py` 存在缺陷，也只记录影响并在交付目录外使用验证包装器，不直接修补冻结文件。
 
 ## 2. 材料完整性门
 
@@ -48,7 +53,10 @@ tests/test_outputs.py
 - `persona.md`（若题型使用多轮用户 persona）；
 - fixtures/resources（是否必需取决于题型）；
 - 现有 `tests/rubrics.py`、`tests/test_outputs.py`、`tests/judge.py` 和运行脚本；
-- task 配置和输出 schema（若存在）。
+- task 配置和输出 schema（若存在）；
+- 客户最新指导文件、返修说明和原始 ZIP/冻结包（若提供）。
+
+若有冻结包，按唯一题目标识定位内容，不依赖可能乱码的顶层目录名；路径比较前统一 `/` 与 `\\`。先建立每题冻结清单和内容哈希，再动测试文件，防止历史计划、旧副本或工具生成物污染交付目录。
 
 `instruction.md` 缺失时题目没有可执行依据：平台任务应标记废弃；本地任务应停止实质标注并报告阻断。不要仅因 persona 或 fixture 缺失就废弃，先依据题型判断其是否应存在。
 
@@ -246,9 +254,28 @@ Evidence 必须来自真实 conversation、audit、output 或原始响应。不�
 
 一条业务事实只计权一次。不要给同一个 rubric 再写 `_judge`、`_code` 两个测试，也不要在 Cross、Trap、Output、Numeric 多组重复检查同一结果。
 
-工具调用应拆分：endpoint 是否调用、每个关键参数是否正确、调用次数是否满足、禁止 endpoint 是否未调用。
+时间线、排序、计数、集合等可计算事实应与语义相关性拆开：代码断言负责时间先后和精确结构，judge 只负责原始记录是否支持候选的语义联系。不要把“时间上可能”当成因果成立，也不要让 judge 重复评分已由代码判定的时间事实。
 
-输出文件应拆分：文件存在、文件可解析、顶层类型、必需字段、数组计数、关键字段值、集合、排序和跨字段一致性。
+结构化输出的每个字段只承担 instruction 定义的职责。比如 `error_summary` 概括错误事实，`impact_scope` 描述业务影响范围，`priority_reason` 解释所选优先级；除非 schema 明确要求，不得强迫候选在多个字段重复同一症状、因果或影响。Judge evidence 应以被测字段为主，原始响应仅用于核实该字段；不要因为信息出现在另一个字段就无条件通过，也不要把另一个字段的内容变成当前字段的额外必填项。
+
+工具调用应拆分：endpoint 是否调用、每个关键参数是否正确、调用次数是否满足、禁止 endpoint 是否未调用。Audit 未保存 method 时，不得凭空断言不存在的 method 字段；若 audit 只在特定 method 的路由内部产生，应记录这一证据链。
+
+输出文件应拆分：文件存在、文件可解析、顶层类型、必需字段、数组计数、关键字段值、集合、排序和跨字段一致性。Trusted API evidence 必须校验请求实体 ID 与响应 ID 匹配及必要字段完整，空字典、错误对象或不匹配响应不能自证业务事实。
+
+### 可执行交付物的动态探针
+
+若交付物包含可复用脚本、插件或自动化程序，固定 fixture 上的 summary 正确不能证明实现正确。应使用能区分常见错误实现的最小合成输入动态执行，例如非零保留量、严格边界、等值边界、同组乱序输入、状态分支，以及会暴露硬编码总数或成本的数据。
+
+候选代码不可信，动态探针必须在交付目录外的专用临时目录和隔离子进程中运行：
+
+- 只传 `PATH`、locale、必要 `PYTHONPATH` 等最小环境，不把 judge key、base URL 或其他宿主机 secrets 传给候选；
+- 阻断网络，以及 `subprocess`、`os.exec*`、`os.spawn*`、`fork`、`system` 等额外进程创建路径；
+- 在 POSIX 环境用 `RLIMIT_CORE`、`RLIMIT_CPU`、`RLIMIT_FSIZE`、`RLIMIT_NOFILE`、`RLIMIT_AS`、`RLIMIT_NPROC` 限制 core dump、CPU、文件大小、文件描述符、地址空间和进程数；
+- Linux/root 环境下使用专用目录并降权到非特权用户；不要把目录放宽到全局可写；
+- tests、solution 和基线输入只读挂载，output、logs、audit、cache 放到交付目录外；
+- 探针失败应区分候选行为错误、超时、资源限制触发和 harness 自身错误。
+
+Monkey patch 只是纵深防御，不是完整安全边界；优先结合容器、只读挂载、最小权限和资源限制。修改探针安全配置后至少重跑受影响的探针测试，最终报告不得沿用修改前的结果。
 
 ## 10. 条件触发测试
 
@@ -312,11 +339,11 @@ pytest --collect-only tests/test_outputs.py
 
 在用户要求、项目已有脚本或需要验证判分器区分度时运行。Oracle 和 nop 必须使用隔离的 output、audit、conversation 和 judge cache，不能交叉污染。
 
-记录：pytest 通过、失败、跳过和总数；reward、gate、num、den；失败测试名称和原因；命令返回码；是否存在 `pytest | tee` 未启用 `pipefail`；judge 是否使用指定 env 文件。绝不记录密钥值。
+记录：pytest 通过、失败、跳过和总数；reward、gate、num、den；失败测试名称和原因；solve/test 命令返回码；是否存在 `pytest | tee` 未启用 `pipefail`；judge 是否使用指定 env 文件。绝不读取、打印、转写或持久化 env-file 中的密钥值，只通过容器 `--env-file` 或等价运行机制注入。
 
-失败分为：测试自身错误、环境或运行错误、被测方案真实失败、evidence 不足、规则冲突或历史基线缺失。
+失败分为：测试自身错误、环境或运行错误、被测方案真实失败、evidence 不足、规则冲突、judge 服务故障或历史基线缺失。HTTP 401/402/429/5xx、连接错误和超时不能直接算作候选业务失败；先保留原始错误分类，修复运行条件后使用全新 judge cache 和全新隔离目录重跑。重跑后仍失败时，再按候选 evidence 与 rubric 复核是否为真实失败或测试过严。
 
-修改测试后复跑静态检查；评分逻辑变化时重新运行 Oracle 和 nop。Oracle 不要求 1，nop 不要求 0。
+修改测试后复跑静态检查；评分逻辑或 judge rubric 变化时重新运行 Oracle，必要时重新运行 nop。不得只重跑失败项后把它与旧的全量结果拼成最终结论。Oracle 不要求 1，nop 不要求 0；Oracle 非满分可能正确暴露冻结官方解的问题，nop 的少量通过可能来自服务健康或空行为下成立的禁止副作用项。
 
 Windows Git Bash 下 Docker bind mount 优先使用：
 
@@ -324,9 +351,24 @@ Windows Git Bash 下 Docker bind mount 优先使用：
 --mount type=bind,src=/e/.../tests,dst=/tests
 ```
 
-如 `test.sh` 使用 `pytest | tee` 且无 `set -o pipefail`，以 pytest 摘要和 reward 为准，不以 shell 0 退出码声称通过。
+如 `test.sh` 使用 `pytest | tee` 且没有显式传播 `${PIPESTATUS[0]}` 或启用 `pipefail`，其 shell 0 返回码不可信。以 pytest 摘要、CTRF、reward、gate、num/den 为准，并在报告中注明冻结脚本限制；不要为修返回码而修改已冻结的 `test.sh`。
 
-## 13. 平台交付
+## 13. 缓存清理与冻结边界审计
+
+最终交付前清理运行和编译生成物：`.pytest_cache/`、`__pycache__/`、`*.pyc`、`.mimosa/`、`.DS_Store`。清理前先确认它们确为缓存或元数据；不要把删除原 ZIP 自带元数据误报为冻结业务文件缺失。
+
+若有原始 ZIP/冻结包，逐题执行最终内容审计：
+
+1. 通过完整任务目录名定位题目，排除 `__MACOSX` 和 AppleDouble `._*` 条目；
+2. 统一路径分隔符，使用 SHA-256 比较业务文件；
+3. 比较时忽略 `._*`、`.DS_Store`、`__pycache__`、`*.pyc`、`.pytest_cache`、`.mimosa`；
+4. 输出 missing、changed、unexpected extra 三类结果；
+5. 只允许客户授权文件发生变化，只允许明确要求的 QA 报告等文件新增；
+6. 报告写入和最后一次测试修改后再做一次审计，避免报告或工具生成物让先前结论过期。
+
+冻结审计失败时，先恢复或解释非授权漂移，再交付。不得用整目录覆盖掩盖差异，也不得在交付目录中保存验证包装器、judge cache、临时输出或密钥文件。
+
+## 14. 平台交付
 
 平台任务完成前依次确认：
 
@@ -340,8 +382,10 @@ Windows Git Bash 下 Docker bind mount 优先使用：
 
 “保存”只保存当前内容，不代表题目正式完成。历史任务页面只用于查看，不用于上传、修改或执行操作。正式网址和数据包以客户当前通知为准。
 
-## 14. 报告与最终回复
+## 15. 报告与最终回复
 
-若要求 QA 报告，使用中文并写清：当前题、历史前缀题和材料来源；历史检查点迁移表；A–H 适用性；rubrics/tests 静态结果；Oracle/nop 结果；修改文件及真实路径；测试错误、环境错误、真实失败、evidence 不足和规则冲突；尚未执行的步骤；修改边界。
+若要求 QA 报告，使用中文并写清：当前题、历史前缀题和材料来源；冻结基线与修改边界；历史检查点迁移表；A–H 适用性；rubrics/tests 静态结果；Oracle/nop 的 passed/failed/skipped/total、reward、gate、num/den；失败分类；冻结脚本或环境限制；最终 ZIP 审计；修改文件及真实路径；尚未执行的步骤。
 
-最终回复先给结论，再列文件和验证结果。不要把未运行的检查写成已通过，不要把本地保存写成平台已提交，也不要把 Oracle 1.0 写成客户规则已全部对齐。
+QA 报告必须对应最终磁盘代码和最后一次全量运行。任何 rubric/test、探针隔离或评分逻辑修改后，都要更新测试数量、失败列表和分数；不得沿用修改前的 82/82、117 项等旧结果，也不得把定向回归写成完整 Oracle。
+
+最终回复先给结论，再列文件和验证结果。不要把未运行的检查写成已通过，不要把本地保存写成平台已提交，也不要把 Oracle 1.0 写成客户规则已全部对齐。只有用户明确要求时才提交或 push；推送前检查 Git 根目录和工作树，只提交本次 Skill 或题目范围内的目标文件，避免夹带无关改动。
