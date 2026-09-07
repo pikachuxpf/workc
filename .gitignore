@@ -1,6 +1,11 @@
-# Local files and generated artifacts
+# Secrets: keep real env files local; commit only explicit templates
 .env
 *.env
+.secrets/*
+!.secrets/
+!.secrets/*.env.example
+
+# Generated artifacts
 .DS_Store
 __pycache__/
 *.pyc

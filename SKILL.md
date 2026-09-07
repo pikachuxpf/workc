@@ -219,7 +219,20 @@ python -m pytest --collect-only -p no:cacheprovider test_outputs.py
 - tests、rubrics 和目标题没有混装；
 - 类名与 runner 权重映射一致（若适用）。
 
-Oracle/nop 在用户要求、项目流程要求或需验证区分度时运行。使用全新且互相隔离的 output、audit、conversation、run 目录和 judge cache；tests、solution、fixtures 只读。任何 judge secrets 只通过指定 env-file 或等价运行机制注入，不读取、打印、转写、提交或持久化密钥值。
+### Judge secrets 本地范式
+
+WorkC 的默认私密配置路径为 `~/.agents/skills/workc/.secrets/judge.env`；路径按当前用户主目录解析，不把某台机器的绝对路径写进测试或报告。GitHub 只保存 `.secrets/judge.env.example` 占位模板，真实 `judge.env` 必须被 `.gitignore` 排除。
+
+使用 secrets 时遵守以下边界：
+
+- 只检查真实 env-file 是否存在及必要的文件元数据，不使用 Read、`cat`、`type`、`Get-Content`、`source` 或其他方式读取、回显、解析其值；
+- 仅在实际运行 judge 时通过 `--env-file` 或 runner 的等价参数注入，不把变量逐项展开到命令行；
+- 不把真实文件复制到题目目录、发布仓库、日志、QA 报告、临时转写、容器镜像或候选代码可访问的环境；
+- `.env.example` 只能写变量名、无效占位值和公开默认值，不能从真实 env-file 自动生成或替换；
+- 用户明确指定安全 env-file 时优先使用该路径；否则使用上述本地路径。真实文件缺失时标记 `BLOCKED`，模板不得用于真实 judge 请求；
+- 提交前用 `git ls-files` 和 ignore 检查确认真实 `judge.env` 未被跟踪，但不要用秘密内容做搜索样本。
+
+Oracle/nop 在用户要求、项目流程要求或需验证区分度时运行。使用全新且互相隔离的 output、audit、conversation、run 目录和 judge cache；tests、solution、fixtures 只读。候选进程只获得完成任务所需的非秘密最小环境，judge secrets 仅进入 judge 进程。
 
 HTTP 401/402/429/5xx、连接错误和超时属于 judge/infrastructure 问题，不直接算候选业务失败。修复运行条件后用全新 cache 和目录重跑，再判断真实失败。修改评分逻辑后做完整受影响运行；定向回归不能冒充全量 Oracle，也不能把新失败项结果与旧全量结果拼接。
 
