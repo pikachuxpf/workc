@@ -29,7 +29,7 @@
 
 Manifest 是题包级 criterion 身份与可追溯契约。具体 schema 以当前任务为准；在已核实的 RewardKit 0.1.7 架构中，框架不会自动读取该 YAML，实际 criterion 仍由 `checks.py` 注册，因此 QA 必须主动比对两者。其他版本是否原生加载 manifest 必须按安装版本验证，不能跨版本假设。常见字段职责如下：
 
-- `angle_id`：稳定、唯一的评分项标识；必须与 check 注册和结果标识一致。
+- `angle_id`：题包内稳定、唯一的评分项标识；必须与 check 注册参数建立可复核映射，并核对 runner 最终机器结果 ID。RewardKit 0.1.7 默认结果名可能是 `<函数名>:<工厂参数>`，不是裸 `angle_id`；若要求三处同名，需使用该版本实际支持的显式 `name` 等机制并在全新进程验证。
 - `dimension`：如 process、output、safety；必须是 runner 和 reward 配置认可的维度。
 - `weight`：criterion 在其规定层级的权重。它不必等于最终 reward 占比，必须结合聚合规则解释。
 - `evidence`：允许或要求读取的证据类型、位置或载体。
@@ -41,7 +41,7 @@ QA 时检查：
 1. `angle_id` 唯一，无空值、重复和拼写漂移。
 2. 每个 criterion 只承担一个可独立计分的业务事实。
 3. dimension、evidence、scorer 与 check 实际行为一致。
-4. Manifest 中每个计分项都被 runner 加载并注册；每个计分 check 也都存在对应 manifest 项。
+4. Manifest 中每个计分项都被 runner 加载并注册；每个计分 check 也都存在对应 manifest 项；同时核对注册参数与最终机器结果 ID，不能只做 AST 参数比对。
 5. 不把 helper、诊断项、环境 preflight 或重复别名当成额外 criterion。
 6. source 能追溯到当前 instruction、项目规范或正式载体，不用 ground truth 或 solution 覆盖独立推导。
 7. 更改 criterion 集合、维度或权重前，确认题目级 allowlist 和冻结规则明确允许。
@@ -104,7 +104,7 @@ Process evidence 常来自 trajectory、tool trace 或 frozen audit。必须把 
 6. 异常是否被错误吞掉并转换为通过或候选 0 分；
 7. 同一 check 是否被自动和显式重复注册、重复加载或重复计权。
 
-在 RewardKit 0.1.7 的程序化模式中，带额外 factory 参数的 criterion 可能需要模块底部显式调用 `rk.<name>(angle_id, weight=...)` 才会注册；实际身份和权重来自这类注册调用，而不是 YAML 自动注入。版本或封装不同则以实际 decorator/registry 行为为准。
+在 RewardKit 0.1.7 的程序化模式中，带额外 factory 参数的 criterion 可能需要模块底部显式调用 `rk.<name>(angle_id, weight=...)` 才会注册；实际权重来自注册调用，默认机器结果名可能组合函数名与第一个工厂参数。QA 必须在独立新进程调用当前版本的真实 discover/runner，读取实际 `Session.criteria` 或结果详情；该版本可能缓存按路径导入的模块，同进程重复 discover 不能证明重新注册。版本或封装不同以实际 decorator/registry 行为为准。
 
 ## 5. `reward.toml` 与聚合
 
@@ -119,7 +119,7 @@ QA 至少复算：
 - safety 是否仅为普通 dimension，还是 runner 明确实现了 gate；
 - 输出的总 reward 是否能由分维度结果复算。
 
-没有 runner 明确实现时，不得自行声称 safety gate、默认等权或某个 weight 是最终总分占比。尤其要核对安装的 RewardKit 精确版本：已核实的 0.1.7 程序化目录中，维度内部按 criterion 注册权重加权，而顶层 `_collapse_rewards()` 使用各子 Reward 的 `reward_weight`；`[[reward]].weights` 并不当然生效。若子 Reward 都采用默认 `reward_weight=1.0`，顶层可能实际等权。升级版本后必须重新验证，不能把这一行为当作永久规则。
+没有 runner 明确实现时，不得自行声称 safety gate、默认等权或某个 weight 是最终总分占比。尤其要核对实际安装版本：已核实的 RewardKit 0.1.7 程序化目录中，维度内部按 criterion 注册权重归一加权，顶层 `_collapse_rewards()` 使用各子 Reward 的 `reward_weight`，且不读取 `[[reward]].weights`。子 Reward 都采用默认 `reward_weight=1.0` 时，顶层严格等权；各维度 criterion 权重总和只是维度内部归一化分母，不形成跨维度占比。升级版本后必须重新验证，不能把这一行为泛化。
 
 ## 6. Task 与 materialization 文件
 
@@ -128,12 +128,27 @@ QA 至少复算：
 - `task.toml`：任务分类、runner、环境、用户模拟器和 verifier 环境声明；用于确认实际执行入口和挂载。
 - `materialization_manifest.yaml`：描述需求如何分布到 user query、skill、workspace config、local documents 和 tool description 等载体；也可能描述读写权限、路径解析和 input/output recast。
 - `meta.json` 或 pipeline 状态：任务生成、版本或流水线元数据；用于诊断，不自动成为业务真值。
-- `ground_truth.json`：离线交叉检查材料。不得作为候选运行时输入，不得被 tests 动态读取，也不得覆盖 instruction 与正式载体独立推导的真值。
+- `ground_truth.json`：默认不读取。只有 Seal 当前正式规则明确授权时，才可在独立推导完成后用于评分进程外的人工离线交叉检查；不得挂载或暴露给正式评分容器/候选，不得被 tests、runner 脚本、环境变量或 checks 动态读取，也不得作为 manifest `source` 覆盖当前权威载体。静态审查须覆盖 test.sh、Oracle/nop 脚本、Dockerfile 与挂载参数，而不只搜索 checks.py。
 - `solution/`：Oracle 参考实现或生成逻辑。可以用于授权范围内的离线交叉检查，但不能以“让 solution 通过”为由定义 criterion。
 
 若 materialization 将同一需求拆到多个载体，必须按其正式优先级和 recast 规则合并理解；不得只读 `instruction.md` 就忽略 workspace policy，也不得把只读 carrier 当成应修改的交付物。
 
-## 7. Judge 与降级行为
+不要把 materialization 自报的 constraint check 当成独立证明。runner 外部 preflight 至少验证 fragment→resource→materialized target→io_target 引用闭合，authority/canonical/freshness/access 一致，必需 slot 有唯一当前权威载体；用声明解析器重验 input/output recast 与 preserved semantic slots，并确保 stale/legacy/distractor 不进入当前真值。preflight 失败记 `BLOCKED`，不进入候选计分分母。
+
+## 7. Seal 的 case 计数
+
+在任何审查性修改前冻结同一份基线：
+
+- `R0`：manifest 中唯一、正式计分的 `angle_id` 数；
+- `T0`：实际 registry 中唯一、产生独立计分结果的 check 身份数。
+
+一个 factory 函数注册多个计分 ID 时按 ID 数；同一 check 的重试或不同候选运行不重复计数。helper、diagnostic、preflight、禁用或未注册项不算有效评分 check。重复 ID 按稳定身份只计一次，但重复本身是 issue；孤儿 manifest criterion 和幽灵注册 check 分别保留在各自库存并登记映射缺陷。
+
+用多重集合固定口径，但只在同一命名空间比较：`M` 为 manifest `angle_id`，`R` 为全新进程真实 runner 产出的最终 criterion ID。先根据实际注册参数和 runner 命名规则建立可复核映射 `f: angle_id → expected_final_id`，再令 `E=f(M)`；映射缺失、歧义或一对多本身登记为 issue。manifest/runtime duplicate 分别在 `M`、`R` 内计算 `Σ max(count(id)-1,0)`；orphan 使用多重集合差 `E-R` 并通过 `f` 回报对应 `angle_id`，ghost 使用 `R-E`。只有已证明两侧采用相同 ID 命名空间时，才可直接比较 `M` 与 `R`。0.1.7 默认结果名若带函数名前缀，必须同时报告“注册参数映射”和“最终结果 ID 映射”，不能把前者 1:1 冒充最终闭合。
+
+新增 criterion/check 必须有正式 claim 来源、有效身份、注册/绑定和适用验证。纯 rename/move/描述调整不计新增；拆分时最多一个后继项继承原身份，其余新原子项进入 `AR/AT`。完整公式见 [verification-and-reporting.md](verification-and-reporting.md)。
+
+## 8. Judge 与降级行为
 
 先看 manifest 是否存在 judge scorer：
 
@@ -141,14 +156,15 @@ QA 至少复算：
 - 存在 judge criterion：只向 judge 提供该 criterion 所需的最小真实 evidence，不注入标准答案，不让其他字段替指定字段通过。
 - Judge HTTP 401/402/429/5xx、连接错误和超时是 infrastructure failure，不是候选业务失败。
 - Runner 的 degraded 行为必须显式、可追溯；不能在 judge 不可用时静默 pass，也不能把基础设施错误计为业务 fail。
-- 程序化 check 若用宽泛 `except` 捕获所有异常并返回 `0.0`，可能把挂载缺失、命令不存在或 verifier 错误伪装成候选失败；必须结合 runner 错误记录和 criterion evidence 分类。
+- RewardKit 0.1.7 的程序化 criterion 只接受布尔/数值结果，没有原生 `BLOCKED`、skip 或 excluded 返回通道。criterion 执行前必须由 runner 外部 preflight 检查 evidence 挂载、baseline、workspace、运行时和依赖；失败时终止评分并写独立 BLOCKED 状态，不生成候选 0 分。
+- 程序化 check 若用宽泛 `except` 捕获所有异常并返回 `0.0`，可能把挂载缺失、命令不存在或 verifier 错误伪装成候选失败；只有候选负责的缺失输出才能转为 0，其他异常保留 runner 原始错误链。
 
-真实 judge 配置只通过 `~/.agents/skills/workc/.secrets/judge.env` 的 env-file 方式在 judge 进程注入。不得读取、回显、转写或传给候选代码。
+真实 judge 配置只通过 `~/.agents/skills/workc/.secrets/judge.env` 注入独立 judge 进程/容器；只有该受信任运行时可直接解析 env-file。代理、通用编排层和候选不得读取、回显、转写或解析其值；不得注入会启动候选的编排进程，judge 也不得再启动候选。
 
-## 8. 判分器 QA 最低清单
+## 9. 判分器 QA 最低清单
 
 1. **角色与范围**：确认用户要求 QA，而不是完成业务题；记录 allowlist 和冻结文件。
-2. **加载链**：从 `task.toml`、`test.sh`、RewardKit 入口追到实际 manifest、checks 和 reward 配置。
+2. **加载链**：从 `task.toml`、`test.sh`、RewardKit 入口追到实际 manifest、checks 和 reward 配置；记录实际 Python/RewardKit 版本，不抄 meta 声明。依赖须精确锁定且安装失败不可被 `|| true` 等吞掉，构建期验证导入和版本。
 3. **规则来源**：从 instruction、workspace policy、fixtures、工具文档和 materialization 载体独立建立覆盖矩阵。
 4. **Manifest**：核对 ID、dimension、weight、evidence、scorer、source 和原子性。
 5. **Registry**：核对 manifest ↔ loaded check 双向一一对应，无漏载、幽灵项、重复注册或诊断项计分。
@@ -159,7 +175,7 @@ QA 至少复算：
 10. **运行**：使用项目 runner 和新鲜隔离目录；记录各维度结果、总 reward、返回码和基础设施错误。
 11. **差异审计**：仅 allowlist 文件变化；不提交缓存、日志、audit、真实 secrets 或候选运行产物。
 
-## 9. 典型分流示例
+## 10. 典型分流示例
 
 - “完成这个 Seal 页面任务”：业务实现。读取 tests 辅助理解，但只修改允许的页面、报告、归档和 API 状态，不改 criterion/checks。
 - “质检这个 Seal 题的 criterion”：判分器 QA。审查 manifest、runner 实际加载的 checks 和 reward 聚合，不补旧式文件。
