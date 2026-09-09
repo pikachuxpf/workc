@@ -1,16 +1,21 @@
 # Seal / RewardKit 评测架构参考
 
-本参考用于识别和质检采用 `criteria_manifest.yaml + 分维度 checks.py` 的 Seal 任务。它说明职责和核对方法，不提供任何具体题目的答案，也不授权修改题包。
+本参考只用于采用 `criteria_manifest.yaml + 分维度 checks.py` 的 Seal 测试侧作业。WorkC 可以完成、返修和验证 tests 侧评分实现，但不完成页面、服务、业务脚本、业务报告、业务归档或 API 状态。
 
-## 1. 先判断用户角色
+题包内最大可写范围固定为实际授权的 `tests/**` 子集与根目录 `qa_report.md`。完成、返修或作业交付自检必须生成或更新该报告；除根目录 `qa_report.md` 这个固定例外外，所有 tests 外路径无条件冻结。
 
-目录带有 `tests/` 只表示任务包含验收器，不表示本次工作要维护验收器。
+## 1. 先执行固定主流程
 
-- **业务实现**：用户要求完成页面、服务、脚本、报告、归档包或 API 收口。`tests/` 默认只读，只用于理解验收条件；修改 instruction、项目规范和载体权限共同允许的业务文件，instruction 本身通常也是只读规则源。
-- **判分器 QA**：用户要求质检 criterion、checks、RewardKit、区分度或评分逻辑。只说“审查、质检、检查、分析、报告问题”时默认 `audit-only`；明确要求“修改、修复、返修、增强、更新”后才进入 `fix-and-validate`，再从 runner 实际加载链确定 tests 内候选 allowlist。
-- **只读分析**：用户只问需要做什么、文件对应关系、是否可交付，或明确要求不修改。只读材料并回答，不修改、运行候选代码、生成报告或打包。
+先理解题目、materialized carriers 与 runner 的正式要求，再建立 manifest/check 覆盖基线；随后只修改和优化授权的 `tests/**` 子集，执行适用验证，最后生成或更新根目录 `qa_report.md` 并做差异审计。业务材料只用于推导 tests 应检查什么，不由 WorkC 修改；QA 报告是作业收尾，不是独立质检入口。
 
-候选 allowlist 不能产生写入授权；它只能在已经获得写入授权后继续缩小可修改范围。
+## 2. 再判断作业模式
+
+- **完成/返修测试侧作业**：沿 runner 实际加载链确定 `tests/**` 内候选 allowlist；获得明确授权后只修改该子集，并同步生成或更新根目录 `qa_report.md`。
+- **作业交付自检**：若 tests 无需修改，题包内仅写根目录 `qa_report.md`；只有报告生成且差异审计闭合后才能声明作业交付自检完成。
+- **只读咨询**：用户只问需要做什么、文件对应关系、是否可交付，或明确要求不修改。只读材料并回答，不修改、不运行、不生成报告或打包，并明确本轮未完成、未返修或未作业交付自检作业。
+- **业务实现请求**：超出 WorkC 范围。业务文件只可作为测试侧作业的 evidence 读取，不得由 WorkC 修改。
+
+候选 allowlist 不能产生或扩大写权；它只能在 `tests/**` 内继续缩小范围。完整包交付前必须在本轮生成或更新根目录 `qa_report.md`；tests 未变化时使用 `report-only`，包只能写到题包外或用户明确指定的外部位置。
 
 ## 2. 与旧式 ClawEval 的职责映射
 
@@ -36,7 +41,7 @@ Manifest 是题包级 criterion 身份与可追溯契约。具体 schema 以当�
 - `scorer`：确定性检查、judge 或其他受支持的评分器类型。
 - `source`：该 criterion 的规则来源或载体，用于追溯，不是候选运行时可读取的标准答案。
 
-QA 时检查：
+完成或返修测试侧作业时检查：
 
 1. `angle_id` 唯一，无空值、重复和拼写漂移。
 2. 每个 criterion 只承担一个可独立计分的业务事实。
@@ -44,7 +49,7 @@ QA 时检查：
 4. Manifest 中每个计分项都被 runner 加载并注册；每个计分 check 也都存在对应 manifest 项；同时核对注册参数与最终机器结果 ID，不能只做 AST 参数比对。
 5. 不把 helper、诊断项、环境 preflight 或重复别名当成额外 criterion。
 6. source 能追溯到当前 instruction、项目规范或正式载体，不用 ground truth 或 solution 覆盖独立推导。
-7. 更改 criterion 集合、维度或权重前，确认题目级 allowlist 和冻结规则明确允许。
+7. 更改 criterion 集合、维度或权重前，确认相关文件位于本轮实际授权的 `tests/**` 子集；题目级规则只能继续收窄，不能解除 tests 外冻结。
 
 ## 4. 分维度 `checks.py`
 
@@ -104,13 +109,13 @@ Process evidence 常来自 trajectory、tool trace 或 frozen audit。必须把 
 6. 异常是否被错误吞掉并转换为通过或候选 0 分；
 7. 同一 check 是否被自动和显式重复注册、重复加载或重复计权。
 
-在 RewardKit 0.1.7 的程序化模式中，带额外 factory 参数的 criterion 可能需要模块底部显式调用 `rk.<name>(angle_id, weight=...)` 才会注册；实际权重来自注册调用，默认机器结果名可能组合函数名与第一个工厂参数。QA 必须在独立新进程调用当前版本的真实 discover/runner，读取实际 `Session.criteria` 或结果详情；该版本可能缓存按路径导入的模块，同进程重复 discover 不能证明重新注册。版本或封装不同以实际 decorator/registry 行为为准。
+在 RewardKit 0.1.7 的程序化模式中，带额外 factory 参数的 criterion 可能需要模块底部显式调用 `rk.<name>(angle_id, weight=...)` 才会注册；实际权重来自注册调用，默认机器结果名可能组合函数名与第一个工厂参数。作业验证必须在独立新进程调用当前版本的真实 discover/runner，读取实际 `Session.criteria` 或结果详情；该版本可能缓存按路径导入的模块，同进程重复 discover 不能证明重新注册。版本或封装不同以实际 decorator/registry 行为为准。
 
 ## 5. `reward.toml` 与聚合
 
 `reward.toml` 描述 RewardKit 的维度、聚合或运行设置，但最终解释必须以实际 runner 为准。Manifest 中的 criterion `weight` 与最终 dimension 权重可能处于不同层级。
 
-QA 至少复算：
+作业验证至少复算：
 
 - 每个 dimension 的 criterion 集合和分母；
 - criterion weight 在维度内部如何归一或汇总；
@@ -123,7 +128,7 @@ QA 至少复算：
 
 ## 6. Task 与 materialization 文件
 
-这些文件帮助理解生成和运行链，但通常不是业务实现的可修改对象：
+这些文件帮助理解生成和运行链，但只要位于 `tests/**` 外就始终冻结，只可读取：
 
 - `task.toml`：任务分类、runner、环境、用户模拟器和 verifier 环境声明；用于确认实际执行入口和挂载。
 - `materialization_manifest.yaml`：描述需求如何分布到 user query、skill、workspace config、local documents 和 tool description 等载体；也可能描述读写权限、路径解析和 input/output recast。
@@ -131,7 +136,7 @@ QA 至少复算：
 - `ground_truth.json`：默认不读取。只有 Seal 当前正式规则明确授权时，才可在独立推导完成后用于评分进程外的人工离线交叉检查；不得挂载或暴露给正式评分容器/候选，不得被 tests、runner 脚本、环境变量或 checks 动态读取，也不得作为 manifest `source` 覆盖当前权威载体。静态审查须覆盖 test.sh、Oracle/nop 脚本、Dockerfile 与挂载参数，而不只搜索 checks.py。
 - `solution/`：Oracle 参考实现或生成逻辑。可以用于授权范围内的离线交叉检查，但不能以“让 solution 通过”为由定义 criterion。
 
-若 materialization 将同一需求拆到多个载体，必须按其正式优先级和 recast 规则合并理解；不得只读 `instruction.md` 就忽略 workspace policy，也不得把只读 carrier 当成应修改的交付物。
+若 materialization 将同一需求拆到多个载体，必须按其正式优先级和 recast 规则合并理解；不得只读 `instruction.md` 就忽略 workspace policy，也不得把只读 carrier 当成应修改的交付物。materialization 中的权限声明只能帮助理解题目，不能覆盖 WorkC 的最大写入边界。
 
 不要把 materialization 自报的 constraint check 当成独立证明。runner 外部 preflight 至少验证 fragment→resource→materialized target→io_target 引用闭合，authority/canonical/freshness/access 一致，必需 slot 有唯一当前权威载体；用声明解析器重验 input/output recast 与 preserved semantic slots，并确保 stale/legacy/distractor 不进入当前真值。preflight 失败记 `BLOCKED`，不进入候选计分分母。
 
@@ -161,9 +166,11 @@ QA 至少复算：
 
 真实 judge 配置只通过 `~/.agents/skills/workc/.secrets/judge.env` 注入独立 judge 进程/容器；只有该受信任运行时可直接解析 env-file。代理、通用编排层和候选不得读取、回显、转写或解析其值；不得注入会启动候选的编排进程，judge 也不得再启动候选。
 
-## 9. 判分器 QA 最低清单
+AI 生成或修改的 criterion、check、expected value、judge 结论和 QA 摘要必须由人工回到正式规则、原始 evidence 与实际 runner 复核；reward、Oracle/nop 或 judge 通过不能替代该复核。
 
-1. **角色与范围**：确认用户要求 QA，而不是完成业务题；记录 allowlist 和冻结文件。
+## 9. Seal 测试侧作业最低清单
+
+1. **角色与范围**：确认这是 WorkC 测试侧作业而不是业务实现或通用质检；实际修改仅限授权的 `tests/**` 子集，并规划强制根目录 `qa_report.md`。
 2. **加载链**：从 `task.toml`、`test.sh`、RewardKit 入口追到实际 manifest、checks 和 reward 配置；记录实际 Python/RewardKit 版本，不抄 meta 声明。依赖须精确锁定且安装失败不可被 `|| true` 等吞掉，构建期验证导入和版本。
 3. **规则来源**：从 instruction、workspace policy、fixtures、工具文档和 materialization 载体独立建立覆盖矩阵。
 4. **Manifest**：核对 ID、dimension、weight、evidence、scorer、source 和原子性。
@@ -173,12 +180,14 @@ QA 至少复算：
 8. **安全**：正向义务和禁止动作分别评分；无秘密泄露、GT 依赖、fixture 自证或 reset 擦除审计。
 9. **聚合**：复算 criterion、dimension 和总 reward；只报告 runner 实际存在的 gate。
 10. **运行**：使用项目 runner 和新鲜隔离目录；记录各维度结果、总 reward、返回码和基础设施错误。
-11. **差异审计**：仅 allowlist 文件变化；不提交缓存、日志、audit、真实 secrets 或候选运行产物。
+11. **差异审计**：题包内只允许本轮实际授权的 `tests/**` 子集和根目录 `qa_report.md` 变化；不提交缓存、日志、audit、真实 secrets 或候选运行产物。
+12. **强制报告**：完成、返修或作业交付自检必须生成或更新根目录 `qa_report.md`，记录实际 test allowlist 外零变化，并把根目录 `qa_report.md` 标为唯一固定例外；缺少报告不得声明作业完成。
 
 ## 10. 典型分流示例
 
-- “完成这个 Seal 页面任务”：业务实现。读取 tests 辅助理解，但只修改允许的页面、报告、归档和 API 状态，不改 criterion/checks。
-- “质检这个 Seal 题的 criterion”：判分器 QA。审查 manifest、runner 实际加载的 checks 和 reward 聚合，不补旧式文件。
-- “修这个旧式题的 rubrics.py/test_outputs.py”：旧式判分器 QA。按 rubric/test 一一对应与 pytest runner 流程处理。
+- “完成这个 Seal 页面任务”：超出 WorkC 范围；不得修改页面、业务报告、归档或 API 状态。WorkC 最多承接该题的测试侧作业。
+- “完成/返修这个 Seal 题的 criterion/checks”：沿 manifest、runner 和实际 registry 修复授权的 `tests/**` 子集，并同步更新根目录 `qa_report.md`。
+- “作业交付自检这个 Seal tests”：若无需修 tests，仅生成或更新根目录 `qa_report.md`；未落盘报告不能声明作业交付自检完成。
+- “修这个旧式题的 rubrics.py/test_outputs.py”：只改授权的 `tests/**` 子集，并同步更新根目录 `qa_report.md`。
 - 同时出现两套结构：混合/未知。读取 runner 确认真正入口；不能任选一套，也不能顺手迁移。
-- “只告诉我需要做什么”：只读分析。不修改、不运行、不打包、不创建报告。
+- “只告诉我需要做什么”：只读咨询。不修改、不运行、不打包、不创建报告，并明确本轮未完成作业。

@@ -1,8 +1,14 @@
 # 旧式 ClawEval / PinchBench 参考
 
-本参考覆盖以 `rubrics.py + test_outputs.py` 为主的旧式题。不同批次可能是多轮对话/工具调用型，也可能是输出文件型；以本题材料和 runner 为准。
+本参考只用于 WorkC 作业的测试侧完成、返修和作业验证，覆盖以 `rubrics.py + test_outputs.py` 为主的旧式题。题包内可修改内容不得超出实际授权的 `tests/**` 子集；完成、返修或作业交付自检必须同步生成或更新根目录 `qa_report.md`。除根目录 `qa_report.md` 这个固定例外外，所有 tests 外业务文件、environment、solution、task/materialization 和根目录脚本均冻结，只可作为 evidence 读取。不同批次可能是多轮对话/工具调用型，也可能是输出文件型；以本题材料和 runner 为准。
 
-## 1. 材料与权威
+纯咨询或明确不修改时只做 V0/chat-only：不修改、不运行、不生成报告或打包，并明确本轮未完成作业。完整包交付前必须在本轮更新 `qa_report.md`；tests 未变化时使用 `report-only`，包只能写到题包外或用户明确指定的外部位置。文件名只作候选架构信号；两套结构并存或加载链不完整时标记 `hybrid/unresolved`，沿 runner 确认真实入口，不得把 legacy 机械迁移成 Seal。
+
+## 1. 固定主流程
+
+先理解 instruction、persona、resources 与 runner 的正式要求，再建立 rubric/test 覆盖基线；随后只修改和优化授权的 `tests/**` 子集，执行适用验证，最后生成或更新根目录 `qa_report.md` 并做差异审计。业务材料只用于推导 tests 应检查什么，不由 WorkC 修改；QA 报告是作业收尾，不是独立质检入口。
+
+## 2. 材料与权威
 
 常见材料包括 instruction、persona、fixtures/resources、grader、rubrics、tests、judge 和 test.sh。
 
@@ -18,7 +24,7 @@
 - 只检查一个独立事实；
 - 采用唯一稳定 `RUBRIC_*` 名称；
 - 与一个评分 test 一一对应；
-- 简洁、正向、可验证；当前旧式规范上限为 300 字符（按最终 rubric 字符串计，包含空白与标点），除非题目级规则明确覆盖；句数仅作可读性提示，不替代字符硬限制；
+- 简洁、正向、可验证；先识别当前批次 profile，不使用跨批次统一上限。已知 ClawEval 旧式 profile 常用不超过 300 字符（按最终字符串计，包含空白与标点）；TB2 标注 profile 使用不超过 400 字符且不超过 3 句。题目级正式规则可在其范围内覆盖，无法确认 profile 时阻断长度合规结论而不猜测；
 - 不内含冗余 PASS/FAIL 说明，不引用其他 rubric 变量，不堆关键词示例；
 - 同一错误说法的即时纠正和后续一致性若是同一事实，应合并而非重复计权。
 

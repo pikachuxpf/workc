@@ -1,35 +1,65 @@
 ---
 name: workc
-description: WorkC、ClawEval、PinchBench 或 Seal 单题的业务实现、判分器 QA、返修、Oracle/nop、QA 报告与交付流程。仅在请求明确属于这些题包，或目录出现 rubrics.py + test_outputs.py、criteria_manifest.yaml + 分维度 checks.py 等成套信号时使用；普通软件测试、泛指 judge、考试题或压缩包任务不因单个关键词触发。先判定目标、写入授权、执行上限、交付方式和评测架构，再按实际 runner 与正式规则来源工作。
+description: WorkC、ClawEval、PinchBench 或 Seal 单题的测试侧作业完成、返修、作业验证、Oracle/nop、QA 报告与交付流程。只处理这些题包的 tests 侧交付，不承接业务实现或通用质检。题包内最大可写范围固定为 tests/** 与根目录 qa_report.md；完成、返修或作业交付自检必须生成或更新 qa_report.md，其余路径全部冻结。仅在用户明确提到 WorkC、ClawEval、PinchBench 或 Seal 单题并要求测试侧作业，或目录出现 rubrics.py + test_outputs.py、criteria_manifest.yaml + 分维度 checks.py 等成套评测信号并明确要求该题包的测试侧作业时使用。
 ---
 
-# WorkC 单题决策与 QA 内核
+# WorkC 测试侧作业内核
 
-## 1. 不变量
+## 1. 最高优先级边界
+
+WorkC 只完成题包的测试侧作业，不完成页面、服务、脚本、业务数据、业务报告、业务 ZIP 或 API 状态等业务实现，也不是普通项目的通用质检 Skill。
+
+题包内最大可写集合固定为：
+
+```text
+tests/**
+/qa_report.md
+```
+
+- 实际 test allowlist 只能在 `tests/**` 内继续收窄，不能扩大。
+- `qa_report.md` 是完成、返修或作业交付自检 WorkC 作业的强制交付物，即使 tests 无需修改也要生成或更新。
+- `tests/**` 和根目录 `qa_report.md` 之外的题包路径全部冻结。用户指令、instruction、materialization、项目配置、复制到副本或打包请求都不能解除此边界。
+- 纯咨询或用户明确要求不修改时可 chat-only，但必须声明本轮未完成、未返修或未作业交付自检该作业。
+- 若任务必须修改 tests 外文件，标为 `OUT_OF_SCOPE/BLOCKED` 并退出 WorkC 写入流程，不得顺手修复。
 
 测试必须反映当前规则，不能用 Oracle 分数反推规则。Oracle 不必为 1，nop 不必为 0；不得为改善分数或比率删除有效 case、放宽正确条件、篡改真值、伪造 evidence、修改 nop 或掩盖基础设施错误。
 
-Skill 只辅助发现与验证问题。AI 生成的 rubric、test、expected value、judge 结论和 QA 摘要都必须由人回到正式规则与原始 evidence 复核；AI、轨迹或历史报告提出的问题必须核实后才登记为已确认。至少人工复核所有失败项、安全项、条件触发项和 code/judge 边界；修复后做适用回归，不能把多轮不一致结果拼成一次通过。
+AI 生成或修改的 rubric/criterion、test/check、expected value、judge 结论和 QA 摘要都必须回到正式规则、原始 evidence 与实际 runner 进行人工复核；Oracle、nop、judge 或 reward 结果不能替代该复核。
 
-维护本 Skill 自身时转入 skill-creator 元流程；本文件不授权修改任何题包。
+维护本 Skill 自身时转入 skill-creator 元流程；本文件不授权修改任何题包外仓库。
 
-## 2. 先固定五维状态
+## 2. 固定主流程
 
-开始前记录一个正交状态元组，避免把“审查”“交付”和“能否执行”混为一谈：
+每道 WorkC 作业都按同一主线推进：
 
-- `target`：`business-artifact` / `grader` / `harness` / `skill-meta`；
-- `mutation`：`none` / `explicit-allowlist`；
+```text
+理解题目与正式要求
+→ 建立 tests 覆盖基线
+→ 修改和优化实际授权的 tests/** 子集
+→ 执行适用验证
+→ 生成或更新根目录 qa_report.md
+→ 差异审计与交付
+```
+
+理解题目是为了让 tests 正确覆盖要求，不是为了修改业务实现。QA 报告是测试侧作业完成后的强制收尾交付物，不是独立质检入口。若 tests 已正确，跳过编辑但仍执行适用验证、更新 `qa_report.md` 并完成差异审计；纯咨询不进入这条完成流程。
+
+## 3. 先固定作业状态
+
+开始前记录：
+
+- `target`：`test-delivery` / `test-harness` / `consultation` / `package`；
+- `mutation`：`none` / `tests-allowlist-plus-report` / `report-only`；
 - `execution-ceiling`：`V0 text-only`、`V1 parser-only`、`V2 harness-import`、`V3 candidate-run`、`V4 judge-run`、`V5 external-action`；
-- `delivery`：`chat-only` / `report-file` / `changed-files` / `full-package` / `platform-submit`；
+- `delivery`：`chat-only` / `completed-assignment` / `full-package` / `platform-submit`；
 - `architecture`：`legacy` / `seal-rewardkit` / `hybrid` / `unresolved`。
 
-用户只说“审查、质检、分析、检查、报告问题”时，`mutation=none` 且默认 `execution-ceiling=V0`。只有明确要求修改、修复、返修、增强或更新，才可能进入 `explicit-allowlist`；候选 allowlist 只能收窄既有授权，不能产生写入授权。项目流程或用户必须另行支持 V2/V3/V4，不能因“需要验证”自动执行候选、联网 judge 或产生运行缓存。
+纯咨询默认 `mutation=none`、V0、chat-only。要求完成、返修或作业交付自检时，必须规划根目录 `qa_report.md`；若需修复 tests，再把明确授权的 `tests/**` 子集加入实际 allowlist。任何 allowlist 只能收窄固定最大写入集合。
 
-本地修改不包含上传、平台提交、发送或 Git push。外部动作必须有本次请求中的明确授权；“已上传”也不等于“已提交”。
+候选运行、judge 和外部动作分别需要当前题目与用户授权。打包只改变 delivery，不扩大写权：完成 `full-package` 交付前必须在本轮生成或更新根目录 `qa_report.md`；tests 未变化时使用 `mutation=report-only`，不得使用 `mutation=none` 或 chat-only 冒充完整包交付。包可以读取冻结文件，但必须写到题包外或明确的外部交付位置，不能在题包内创建 staging、sidecar、临时包或其他文件。
 
-详细分流和冲突案例见 [routing-and-authority.md](references/routing-and-authority.md)。
+详细边界见 [routing-and-authority.md](references/routing-and-authority.md)。
 
-## 3. 架构识别
+## 4. 架构识别
 
 文件名只是候选信号，最终以 `test.sh`、task 配置、import/registry、结果与聚合链为准：
 
@@ -39,113 +69,101 @@ Skill 只辅助发现与验证问题。AI 生成的 rubric、test、expected val
 | `tests/criteria_manifest.yaml` + `tests/*/checks.py` | seal-rewardkit | `angle_id` | 实际注册 check、dimension、RewardKit |
 | 两套并存或链路不完整 | hybrid/unresolved | 追 runner | 不补文件、不猜主架构 |
 
-旧式 ClawEval 与输出型 PinchBench 的细则见 [legacy-claw-eval.md](references/legacy-claw-eval.md)；Seal 见 [seal-rewardkit.md](references/seal-rewardkit.md)。不得把旧式文档中的“三文件交付”泛化到 Seal，也不得给 Seal 机械补建 `rubrics.py` 或 `test_outputs.py`。
+旧式 ClawEval 与输出型 PinchBench 见 [legacy-claw-eval.md](references/legacy-claw-eval.md)；Seal 见 [seal-rewardkit.md](references/seal-rewardkit.md)。不得把旧式文件模型泛化到 Seal，也不得给 Seal 机械补建 `rubrics.py` 或 `test_outputs.py`。
 
-## 4. Claim 级规则来源
+架构识别只决定如何完成 tests 侧作业，不产生业务文件写权。
 
-先由 task/materialization 确认正式载体，再把要求拆成原子 claim。为每条 claim 记录：
+## 5. Claim 级规则来源
+
+先由 task/materialization 确认正式载体，再把要求拆成原子 claim：
 
 ```text
 claim_id | source/carrier | source_class | scope | version/date
 explicit_precedence | recast | resolution | reason
 ```
 
-通常可能涉及用户请求、题目 instruction、workspace policy、local documents、tool description、fixtures/resources、grader、materialization 和 runner。`instruction.md` 在旧式题中常是主要业务载体，但在 Seal 中不一定包含全部正式要求。
+来源可能包括用户请求、instruction、workspace policy、local documents、tool description、fixtures/resources、grader、materialization 和 runner。它们可以决定测试应覆盖什么，但不能把 tests 外路径变为可写。
 
-persona 是被测场景，不自动覆盖政策；tests、solution、旧 QA、历史题和示例默认只是交叉检查材料。`ground_truth.json` 的人工使用权限按架构和批次决定：输出型 PinchBench 完全忽略，不读取、不引用、不交叉验证；其他架构也绝不作为 tests 的运行时依赖，只有正式规则明确允许时才可在独立推导后人工交叉检查。批次专用规则若明确声明覆盖通用规则，只在该批次生效。两个正式载体无法消解时，只将受影响 claim 标为 `BLOCKED`，其余独立部分继续。
+persona 是被测场景，不自动覆盖政策；tests、solution、旧 QA、历史题和示例默认只是交叉检查材料。输出型 PinchBench 完全忽略 `ground_truth.json`；其他架构只有正式规则明确授权时，才可在独立推导后人工离线交叉检查。任何架构都不得让 tests、候选或通用 runner 运行时读取 ground truth。两个正式载体无法消解时，只阻断受影响 claim。
 
-## 5. 基线、授权与冻结
+## 6. 基线、冻结与差异
 
-有原始 ZIP 或冻结目录时：
+1. 原始 ZIP 或目录保持只读；可在独立副本工作，但副本中的写入边界不变。
+2. 修改前记录题目标识、规范化路径、基线 hash、`R0/T0/N0`。
+3. 记录实际 test allowlist；完成类作业另固定根目录 `qa_report.md`。
+4. 除根目录 `qa_report.md` 这个固定例外外，instruction、persona、fixtures/resources、environment、solution、ground truth、task/materialization、题包根脚本及所有其他 tests 外内容无条件冻结。
+5. `tests/**` 内文件也只有进入本轮实际 allowlist 才可修改；冻结 harness 有缺陷时用题包外包装器验证，不擅自扩大 allowlist。
+6. 最终差异必须满足：题包内变化仅来自已授权的 `tests/**` 子集与根目录 `qa_report.md`。任何其他变化都阻断交付。
 
-1. 原件只读，在独立副本工作；排除 `__MACOSX` 和 `._*` 干扰；
-2. 修改前记录题目标识、规范化路径和基线 hash；
-3. 只允许 explicit allowlist 差异，报告完成后再做最终差异审计；
-4. runner、judge、类名、注册、权重、instruction、persona、fixtures、environment、solution、ground truth、task/materialization 是否冻结，以本题规则为准；
-5. 冻结 harness 有缺陷时，用题目录外包装器验证并记录限制，不擅自修补。
+## 7. 完成测试侧作业
 
-缺少某个常见文件不自动废弃任务。先判断是否存在正式替代载体；只有无法建立受影响 claim 的业务依据时才 `BLOCKED`，平台状态变更仍需 V5 授权。
-
-## 6. 按目标执行
-
-### 业务实现
-
-`tests/` 默认只读。按正式载体和 recast 解析可写业务文件、产物、路径、API 收口与归档要求；验证文件存在、解析、schema、字段、数值、集合、排序、同步、ZIP 成员及线上最终状态。不得为了过测改 tests，也不得把题目禁止的安装、构建、联网、发布或 reset 当作普通验证。
-
-详见 [business-implementation.md](references/business-implementation.md)。
-
-### 判分器 QA
-
-编辑前建立覆盖矩阵，每行一个独立事实：来源、预期、条件、身份、检查机制、evidence、权重层级。定义与评分 check 双向一一对应；同一业务事实只能计权一次。
+编辑前建立覆盖矩阵，每行一个独立事实：来源、预期、条件、评分身份、检查机制、evidence、权重层级。定义与评分 check 双向闭合；同一业务事实只能计权一次。
 
 - 可确定复算的文件、JSON/CSV/ZIP、类型、字段、数字、集合、ID、排序、时间、endpoint、参数、次数和哈希用代码检查；
 - 真正需要语义判断的澄清、解释、因果、建议、冲突识别与表达质量才用 judge；
-- 条件场景必须让判定看到用户侧触发证据；未触发按正式规则记不适用或自动通过，不能让关键词断言误伤；
-- 缺失 evidence 要区分候选缺失、场景不适用、可选载体缺失与 harness/infrastructure 故障；核心缺失不得以普通 `return` 记通过；
-- 动态探针只在授权执行级别内进行，并区分容器隔离、进程限制和代码内 patch。
+- 条件场景必须看到用户侧触发 evidence；未触发按正式规则记不适用或自动通过；
+- 缺失 evidence 要区分候选缺失、场景不适用、可选载体缺失与 harness/infrastructure 故障；核心缺失不得普通 `return` 通过；
+- WorkC 可以只读业务文件和产物作为 evidence，但绝不修复它们；
+- 修改只发生在实际授权的 `tests/**` 子集；每轮完成、返修或作业交付自检都同步生成或更新根目录 `qa_report.md`。
 
-## 7. A–H 与安全
+## 8. 安全与候选隔离
 
-旧式规范要求时逐类判断 A–H：提示注入、凭据泄露、歧义操作确认、数据完整性、草稿限制、只读/工具克制、领域安全、紧迫压力抵抗。Seal 不机械套旧式名称，而按 manifest、工具合同和实际 safety evidence 处理。
+旧式规范要求时逐类判断 A–H：提示注入、凭据泄露、歧义操作确认、数据完整性、草稿限制、只读/工具克制、领域安全、紧迫压力抵抗。Seal 按 manifest、工具合同和实际 safety evidence 处理，不机械套旧式名称。
 
-“完成正向动作”和“没有执行危险动作”通常是两个事实。只有 runner 明确实现时才能称 `safety gate`；否则称 safety dimension 或本地安全检查。
+“完成正向动作”和“没有执行危险动作”通常是两个事实。只有 runner 明确实现时才能称 `safety gate`。
 
-候选执行前必须能验证：禁网；tests/solution/fixtures 只读；临时 HOME/CWD/output；不挂载用户目录和 Skill secrets；环境变量显式 allowlist；超时、进程数与文件大小限制；运行前后冻结 hash。候选代码不得获得 judge secrets、宿主秘密或超出任务所需的环境。缺一项且当前风险不能接受时不降级为宿主直接执行，标记 `BLOCKED`。
+返修阶段可修改 allowlist 内的 `tests/**`；候选运行时必须把最终 tests 只读挂载。候选执行前还须验证：禁网；solution、fixtures 和全部 tests 外内容只读；临时 HOME/CWD/output；不挂载用户目录或 Skill secrets；环境变量显式 allowlist；超时、进程数和文件大小限制；运行前后冻结 hash。隔离不足时标记 `BLOCKED`，不能直接在宿主降级执行。
 
-## 8. 错误率与漏召率
+## 9. 错误率与漏召率
 
-执行任务级 QA 时必须从修改前冻结基线记录：
+修改前冻结：
 
-- `R0`：legacy 的唯一原始 `RUBRIC_*` 数；Seal 的唯一 manifest `angle_id` 数；
-- `T0`：legacy 的独立评分 `test_*` 数；Seal 的唯一实际评分 check/registry 身份数；
+- `R0`：legacy 的唯一原始 `RUBRIC_*`；Seal 的唯一 manifest `angle_id`；
+- `T0`：legacy 的独立评分 `test_*`；Seal 的唯一实际评分 check/registry 身份；
 - `N0 = R0 + T0`；
-- `F`：找到、修复并完成适用验证的独立问题数；
-- `AR` / `AT`：新增 rubric/criterion 与新增 test/check 数；`A = AR + AT`。
-
-公式严格固定：
+- `F`：基线既有、已确认并修复、修复保留在最终文件中，且直接适用验证为 FRESH/PASS 的独立 issue 数；
+- `AR/AT`：新增 rubric/criterion 与 scoring test/check；`A = AR + AT`。
 
 ```text
 错误率 = F / N0
 漏召率 = A / (N0 + A)
 ```
 
-每个问题使用稳定 `issue_id`；同一根因跨文件、跨运行只计一次，真正独立的问题分别计数。只有基线既有问题在最终文件中已修复、完成直接适用验证且通过才计 `F`；仅发现、未验证、阻塞或本轮自行引入后又修掉的问题不计。因分子是问题数，错误率可能超过 100%，不得截断；另报“受影响的唯一原始 case 数”。rubric 与对应 test 分别各算一个 case。
+`F` 按 issue 根因去重，`A` 按新增计分身份计数。同一遗漏补 criterion 和 check 通常 `A=2`。纯 rename/move、helper、diagnostic、未注册或未验证项不计新增。删除/合并另记 `DR/DT/D`，不回写冻结基线。
 
-`F` 按 issue 去重，但 `AR/AT/A` 按新增计分身份计数，不按 issue 去重；同一遗漏补一条 criterion 和一条 check 时通常 `A=2`。helper、fixture、setup、diagnostic、preflight、纯改名、移动或描述调整不计新增。新增必须有当前规则来源、有效身份、已注册/绑定并完成适用验证。拆分中最多一个后继项继承原身份，超出原身份的新原子项进入 `AR/AT`；删除/合并分别记 `DR/DT`，`D=DR+DT`，不改公式分母。重复 ID 按稳定身份只计一次，但重复本身登记为问题；孤儿 criterion 和幽灵 check 各保留在对应库存并登记映射缺陷。
+百分比最多两位小数，括号保留未约分整数，如 `50%（1/2）`、`33.33%（1/3）`。错误率可超过 100%，不得截断。无可靠基线时写 N/A。纯咨询可报告 `F=0`，但必须紧邻说明“未授权修复，不代表未发现问题”，且不能声称完成作业。完整规则见 [verification-and-reporting.md](references/verification-and-reporting.md)。
 
-百分比最多两位小数，去掉末尾零，括号保留未约分整数：`50%（1/2）`、`33.33%（1/3）`。`N0=0` 时错误率为 `N/A（0/0）`；若 `A>0`，漏召率为 `100%（A/A）`，否则 `N/A（0/0）`。无可靠基线时写 `N/A`，不猜数。audit-only 可写 `0%（0/N0）`，但必须紧邻注明“未授权修复，不代表未发现问题”，并报告未修复数。
+## 10. 验证与新鲜度
 
-这些是描述性 QA 指标，不是阈值、PASS/FAIL、Oracle/nop、reward、gate 或 runner 分母。完整边界见 [verification-and-reporting.md](references/verification-and-reporting.md)。
-
-## 9. 验证级别与结果新鲜度
-
-- V0：只读文本/差异审查；
+- V0：文本、目录、diff 与规则来源；
 - V1：语法、schema、归档和确定性 parser；
-- V2：import、collect 或 harness 加载；这会执行模块顶层代码，不称为纯静态；
-- V3：隔离 candidate/Oracle/nop；
-- V4：judge，仅在 scorer/流程需要且 secrets 安全注入时；
-- V5：上传、提交、发布、push 等外部动作。
+- V2：import、collect 或 harness 加载；会执行模块顶层代码；
+- V3：隔离 candidate、Oracle、nop；
+- V4：judge；
+- V5：外部打包、上传或提交。
 
-优先使用项目自己的 runner。每次运行绑定 `run_id`、被评分文件 digest、候选产物 digest、runner/version、config digest、起止时间和结果 artifact digest；任何相关文件、权重、prompt、隔离方式或产物变化都会使旧结果过期。定向回归不能冒充全量，多个 run 不能拼接。
+优先使用项目 runner。每次运行绑定 grader、runner、rules、fixture、candidate、conversation、evidence、probe、environment、config 和 result digest。相关输入变化即使旧结果时间较新也变为 `STALE`；范围不足为 `UNVERIFIED`。不得把定向回归冒充全量，也不得拼接不同 run。
 
-统一状态：`PASS`、`FAIL`、`PARTIAL`、`BLOCKED`、`NOT_RUN`。Judge 的 401/402/429/5xx、连接与超时是 infrastructure failure，不直接算候选失败。详见 [verification-and-reporting.md](references/verification-and-reporting.md)。
+统一状态：`PASS`、`FAIL`、`PARTIAL`、`BLOCKED`、`NOT_RUN`。Judge 401/402/429/5xx、连接和超时是 infrastructure failure，不直接算候选失败。
 
-## 10. 报告与交付
+## 11. 强制 QA 报告与交付
 
-仅在用户或项目要求时创建 `qa_report.md`；否则在聊天中报告。使用 [qa_report.template.md](assets/qa_report.template.md)，至少包含状态元组、规则/基线、case 库存、issue 台账、两项指标、运行新鲜度、差异与限制。
+完成、返修或作业交付自检 WorkC 作业时，必须用 [qa_report.template.md](assets/qa_report.template.md) 生成或更新题包根目录 `qa_report.md`。报告至少包含：固定最大写入边界、实际 test allowlist、实际 test allowlist 外零变化审计（根目录 `qa_report.md` 为唯一例外）、规则与基线、case 库存、issue 台账、两项指标、run freshness、差异和限制。
 
-把“可交付”拆成：
+只读咨询不创建报告，但必须明确本轮不是完成、返修或作业交付自检。
 
-- `artifact_handoff_ready`：文件与包可交接；
-- `evaluation_certified`：适用评测完整且结果新鲜；
-- `platform_submission_ready`：已满足平台提交前提。
+将“可交付”拆成：
 
-`full-package` 还要检查 ZIP CRC、重复成员、顶层目录、必需文件、排除项和源文件 hash。`platform-submit` 必须验证最终平台状态；仅保存或上传不能声称提交成功。
+- `test_delivery_handoff_ready`：测试侧文件和强制 QA 报告可交接；
+- `evaluation_certified`：适用评测完整、runner 健康且结果新鲜；
+- `platform_submission_ready`：满足外部提交前提。
 
-## 11. Secrets 与发布
+完整包可读取冻结文件，但交付前必须在本轮生成或更新根目录 `qa_report.md`，且包只能生成到题包外或用户明确指定的外部位置。tests 未变化时使用 `report-only`；打包不扩大题包写权，也不能替代报告。上传不等于提交成功。
 
-真实配置只放 `~/.agents/skills/workc/.secrets/judge.env`。代理、通用编排层和候选绝不读取、打印、转写、解析、复制或提交其值；只允许受信任的独立 judge 进程/容器在 V4 运行时直接解析该 env-file。候选阶段必须先在无 secrets 环境中完成；env-file 不注入会启动候选的 runner/orchestrator，judge 也不得再启动候选。GitHub 只保存无效占位模板 `.secrets/judge.env.example`。提交前只检查真实文件存在性、ignore 和未跟踪状态，不用秘密内容做搜索样本。
+## 12. Secrets 与发布
 
-Git 操作仅在明确授权下执行；先确认仓库、分支、remote 和 diff，只提交 allowlist 公开文件。内部规范原文、视频、个人信息、题目固定答案、缓存、日志、run artifacts 和真实 env-file 不得进入发布。
+真实 judge 配置只放 `~/.agents/skills/workc/.secrets/judge.env`。代理、通用编排层和候选绝不读取、打印、转写、解析、复制或提交其值；只有受信任的独立 judge 进程/容器可在 V4 直接解析 env-file。候选先在无 secrets 环境完成；judge 不得再启动候选。
 
-Skill 自身回归矩阵见 [skill-evals.md](references/skill-evals.md)。最终回复必须区分未运行、基础设施故障、候选失败、报告生成、上传和实际提交，先给结果，再给证据与限制。
+WorkC Skill 自身维护、GitHub 发布或 push 转交 skill-creator 元流程。题包交付只允许已授权的 `tests/**` 子集、根目录 `qa_report.md` 和题包外的交付包；内部规范原文、题目答案、缓存、日志、运行产物和真实 env-file 不得进入交付。
+
+回归矩阵见 [skill-evals.md](references/skill-evals.md)。最终回复必须先说明是否真正完成作业，再列实际 test allowlist 外零变化（根目录 `qa_report.md` 为唯一例外）、QA 报告状态、验证范围、阻塞项和外部提交实际状态。

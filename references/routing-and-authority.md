@@ -1,34 +1,61 @@
-# 路由、授权与规则来源
+# 路由、授权与测试侧写入边界
 
-## 1. 五维状态
+## 1. WorkC 的唯一职责
 
-每次任务先记录：
+WorkC 只处理 WorkC、ClawEval、PinchBench、Seal 单题的测试侧完成、返修、作业验证、QA 报告和交付。它不完成页面、服务、业务脚本、业务数据、业务报告、业务归档或 API 状态，也不是普通项目的通用质检 Skill。
+
+题包内最大可写集合不可解除：
+
+```text
+tests/**
+/qa_report.md
+```
+
+实际 allowlist 只能继续收窄。任何位于最大集合之外的题包路径始终冻结；用户、instruction、materialization、题目内权限声明、复制副本或打包都不能扩大它。
+
+## 2. 固定主流程
+
+```text
+理解题目与正式要求
+→ 建立 tests 覆盖基线
+→ 修改和优化实际授权的 tests/** 子集
+→ 执行适用验证
+→ 生成或更新根目录 qa_report.md
+→ 差异审计与交付
+```
+
+题目与业务载体用于推导 tests 应检查什么，不产生业务文件写权。QA 报告是测试侧作业的强制收尾交付物，不是独立质检入口。tests 已正确时可跳过编辑，但仍须完成适用验证、报告和差异审计；纯咨询不进入完成流程。
+
+## 3. 作业状态
+
+每次记录：
 
 | 维度 | 值 | 决定的问题 |
 |---|---|---|
-| target | business-artifact / grader / harness / skill-meta | 审查或修改谁 |
-| mutation | none / explicit-allowlist | 是否允许写入 |
+| target | test-delivery / test-harness / consultation / package | 完成哪种测试侧工作 |
+| mutation | none / tests-allowlist-plus-report / report-only | 题包内允许哪些写入 |
 | execution-ceiling | V0–V5 | 最多可执行到哪一层 |
-| delivery | chat-only / report-file / changed-files / full-package / platform-submit | 交付什么 |
+| delivery | chat-only / completed-assignment / full-package / platform-submit | 交付什么 |
 | architecture | legacy / seal-rewardkit / hybrid / unresolved | 按哪条评分链工作 |
 
-这些维度互不替代。例如“只读审查并写 QA 报告”是 `target=grader`、`mutation=none`、`delivery=report-file`；报告文件自身必须由用户或项目授权创建，但不等于可以修改 grader。
+状态之间不能互相产生权限。打包、运行或交付不会把 tests 外路径变为可写。
 
-## 2. 动词到默认状态
+## 4. 请求路由
 
-- “完成页面/服务/脚本/产物”：`target=business-artifact`，tests 默认只读。
-- “审查/质检/分析/报告问题”：`target=grader`，`mutation=none`。
-- “修复/返修/增强/更新判分器”：先确认写入授权，再设 `mutation=explicit-allowlist`。
-- “只告诉我需要做什么/是否可交付”：V0、chat-only。
-- “运行 Oracle/nop”：不自动产生写入权限，执行级别通常为 V3；包含 judge 时为 V4。
-- “打包”：只改变 delivery，不自动扩大可修改文件。
-- “上传/提交/push”：V5，必须是当前请求的明确授权。
+- “完成/返修这个 WorkC 作业的 tests”：`target=test-delivery`。实际修改仅限授权的 `tests/**` 子集，并必须生成或更新根目录 `qa_report.md`。
+- “作业交付自检这个 WorkC 作业”：tests 无需修改时用 `mutation=report-only`；仍必须生成或更新根目录 `qa_report.md` 才能声明作业交付自检完成。
+- “只告诉我问题/需要做什么/不要修改”：`target=consultation`、`mutation=none`、V0、chat-only；必须声明本轮没有完成、返修或作业交付自检作业。
+- “运行 Oracle/nop”：不产生写权；通常为 V3，包含 judge 时为 V4。运行产物写到隔离临时位置，不写入题包冻结路径。
+- “打包”：只改变 delivery，不扩大写权。完整包交付前必须在本轮生成或更新根目录 `qa_report.md`；tests 未变化时用 `mutation=report-only`，不得以 `mutation=none` 或 chat-only 声称完成。包只能写到题包外或用户明确指定的外部位置；不得在题包内创建 staging、sidecar、manifest、临时包或补充业务产物。
+- “上传/提交”：V5，必须有本次请求的明确授权，且前置测试侧交付与报告已完成。
+- “完成页面/服务/业务脚本/业务 CSV/JSON/ZIP/API”：超出 WorkC 范围。可以说明边界，但不得使用 WorkC 修改这些文件。
+- “维护或发布 WorkC Skill”：转入 skill-creator；WorkC 题包权限不适用于 Skill 仓库。
 
-混合请求按目标拆开。例如“实现页面并审查 tests”可以对业务文件有写权，而 grader 仍是 audit-only。
+混合请求必须拆开。WorkC 只承接其中测试侧部分；业务实现部分不得获得写入，也不能把业务写权传播给 WorkC。
 
-## 3. Claim 来源账本
+## 5. Claim 来源账本
 
-每个可验收要求拆成原子 claim：
+每个可评分要求拆成原子 claim：
 
 | 字段 | 含义 |
 |---|---|
@@ -42,31 +69,30 @@
 | resolution | accepted / superseded / blocked / informational |
 | reason | 采用或拒绝的依据 |
 
-先用 task/materialization 确定哪些载体是正式要求，再读内容。文件名不产生权威性。
+先用 task/materialization 判断哪些载体是正式要求，再读内容。来源决定测试应检查什么，不决定 WorkC 可以改哪里。
 
-## 4. 常见来源边界
+## 6. 来源边界
 
-- 用户当前明确指令可决定本次工作范围和外部动作，但不能自动改写题目的业务真值。
+- 用户当前指令可以在固定最大写入集合内继续收窄范围，并决定是否运行、打包或提交；不能授权 tests 外题包写入。
 - instruction 在旧式任务中通常是业务主载体；Seal 可能把要求分布在 user query、workspace policy、local document、skill 或 tool description。
-- persona 描述用户行为、分批披露和错误说法，是被测输入，不是政策覆盖层。
-- fixture/resources 提供当前题数据，但其中预计算字段也可能是陷阱；从原始字段独立推导。
-- grader/rubrics/tests/manifest/checks 描述当前评测实现，可用于发现应覆盖角度，但不能单独把自身错误变成业务真值。
-- solution、历史题、旧 QA、Oracle 输出和示例默认只是候选交叉检查材料，是否可读仍受当前规则限制。`ground_truth.json` 不设跨架构默认：PinchBench 完全忽略；Seal/ClawEval 只有正式规则明确授权时，才可在独立推导后人工交叉检查；任何架构都不得让 tests 或候选运行时读取。
-- runner 决定实际加载、注册、evidence 和聚合事实；它不决定业务规则本身。
+- persona 描述被测输入，不是政策覆盖层。
+- fixtures/resources 和业务文件提供只读 evidence；即使发现问题，WorkC 也不修复它们。
+- grader、rubrics、tests、manifest 和 checks 描述当前评测实现，可用于发现覆盖缺陷，但不能让自身错误变成业务真值。
+- solution、历史题、旧 QA、Oracle 输出和示例默认只是候选交叉检查材料。PinchBench 完全忽略 `ground_truth.json`；其他架构只有正式规则明确授权时才可在独立推导后人工交叉检查。tests、候选与通用 runner 都不得运行时读取 ground truth。
+- runner 决定实际加载、注册、evidence 和聚合事实，不决定业务真值，也不扩大写权。
 
-## 5. 冲突处理
+## 7. 冲突与阻断
 
-1. 先确认两条要求是否真的是同一个 claim、同一范围和同一版本。
-2. 有明确“本批次覆盖默认规则”时，只在该范围采用覆盖项。
-3. 两个正式载体可通过 recast、阶段或职责区分时，分别保留。
-4. 无法消解时，仅阻断受影响 claim，并列出来源与影响；其他独立工作继续。
-5. 任何 allowlist 都只能缩小已授权范围；不能从“存在可修改文件”推导出写权。
-6. 扩大冻结范围、强推、覆盖远端、平台废弃或不可逆动作必须获得对应明确授权。
+1. 先确认两条要求是否属于同一 claim、同一范围和版本。
+2. 批次规则明确覆盖通用规则时，只在该范围生效。
+3. 无法消解时，只阻断受影响 claim，其余测试侧工作继续。
+4. 任何要求修改 tests 外文件的 claim 都标为 `OUT_OF_SCOPE/BLOCKED`，不得通过复制到副本、生成补丁或打包绕过。
+5. 根目录 `qa_report.md` 是完成、返修和作业交付自检的强制例外；不授权其他根目录文件。
+6. 最终差异只允许实际授权的 `tests/**` 子集和 `/qa_report.md`。发现其他变化即阻断交付，并报告来源；不得擅自覆盖用户已有变化。
+7. 强推、覆盖远端、平台提交或其他不可逆动作仍需独立明确授权。
 
-## 6. 触发边界
+## 8. 触发边界
 
-应触发：明确 WorkC/ClawEval/PinchBench/Seal 单题，或目录中出现成套评测结构并要求实现、QA、运行或交付。
+应触发：明确 WorkC/ClawEval/PinchBench/Seal 单题，并要求测试侧完成、返修、作业验证、运行、强制 QA 报告或交付。
 
-不应仅凭以下单词触发：普通 pytest 测试、泛指 judge、学校考试题、一般 ZIP 打包、普通 QA 报告、非题包前端开发。
-
-维护 WorkC Skill 本身时调用 skill-creator；WorkC 规则可作为领域输入，但不得把题包 mutation 规则错误套到 Skill 仓库。
+不应触发：业务实现、普通 pytest 修复、泛指 judge、学校考试题、一般 ZIP、普通 QA 报告或非题包前端开发。即使业务目录中存在 `tests/`，只要请求目标是页面、服务或业务产物，也不使用 WorkC 完成它。

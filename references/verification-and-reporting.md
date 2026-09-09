@@ -1,5 +1,7 @@
 # 验证、指标与报告
 
+本参考只适用于 WorkC、ClawEval、PinchBench 或 Seal 单题的测试侧作业，不承接业务实现或普通项目的通用质检。题包内仅本轮授权的 `tests/**` 子集与根目录 `qa_report.md` 可写；维护或发布 WorkC Skill 本身必须转入 skill-creator。
+
 ## 1. 验证级别
 
 | 级别 | 允许动作 | 注意事项 |
@@ -9,9 +11,9 @@
 | V2 | import、pytest collect、harness 注册加载 | 会执行模块顶层代码，不是纯静态 |
 | V3 | candidate、Oracle、nop、动态探针 | 隔离输出、audit、conversation、run 和 cache |
 | V4 | LLM judge | 仅在实际需要时通过 env-file 注入 secrets |
-| V5 | 上传、提交、发布、Git push | 外部动作需明确授权并验证最终状态 |
+| V5 | 题包外打包、平台上传或提交 | 外部动作需明确授权并验证最终状态；WorkC Skill 发布和 Git push 转交 skill-creator |
 
-实际动作不得超过用户和题目允许的较低上限。命令要记录工作目录、版本、配置、返回码与结果 artifact。
+实际动作不得超过用户和题目允许的较低执行上限。文件写入另受不可覆盖的 WorkC 边界约束：题包内仅本轮授权的 `tests/**` 子集和根目录 `qa_report.md` 可写。命令要记录工作目录、版本、配置、返回码与结果 artifact。
 
 ## 2. 结果状态
 
@@ -44,7 +46,9 @@ rubric/criterion、test/check、权重、judge prompt、隔离方式、runner �
 
 ## 4. 原始 Case 基线
 
-在任何审查性修改发生前，对同一份可靠基线快照记录来源、版本/hash 和：
+先沿 `test.sh`、task 配置、import/registry、结果和聚合链确认真实架构；文件名只作候选信号。两套结构并存或加载链不完整时标记 `hybrid/unresolved`，不得任选一套或机械迁移；尤其不得给 Seal 补旧式文件，也不得把 legacy 机械改成 Seal。
+
+在任何测试侧修改发生前，对同一份可靠基线快照记录来源、版本/hash 和：
 
 - `R0`：legacy 中唯一、正式计分的原始 `RUBRIC_*`；Seal 中唯一、正式计分的 manifest `angle_id`；
 - `T0`：legacy 中产生独立计分结果的原始 `test_*`；Seal 中唯一实际注册并产生独立计分结果的 check/registry 身份；
@@ -77,7 +81,7 @@ rubric/criterion、test/check、权重、judge prompt、隔离方式、runner �
 
 纯重构、等价断言强化、格式/描述调整、临时诊断、语义与身份不变的 rename/move 不计新增。名为 helper 但独立注册或产生分数的仍计 `AT`。
 
-拆分时用“验收事实、evidence、通过条件、计分身份”建立基线到最终映射：最多一个后继项继承原身份，其余独立计分后继项进入 `AR/AT`。
+拆分时用“评分事实、evidence、通过条件、计分身份”建立基线到最终映射：最多一个后继项继承原身份，其余独立计分后继项进入 `AR/AT`。
 
 删除与合并分别记录：
 
@@ -105,7 +109,7 @@ N1 = R1 + T1
 漏召率 = A / (N0 + A)
 ```
 
-因 `F` 只包含已修复并验证的问题，错误率实际是“已修复验证问题密度”，会受 mutation 授权影响，不等于全部已发现错误发生率。audit-only 的 `0/N0` 不能用于表示“未发现错误”，也不能与 fix-and-validate 的值直接比较。
+因 `F` 只包含已修复并验证的问题，错误率实际是“已修复验证问题密度”，会受 mutation 授权影响，不等于全部已发现错误发生率。纯咨询的 `0/N0` 不能用于表示“未发现错误”，也不能与完成返修后的值直接比较。
 
 错误率可以超过 100%，不得截断；漏召率在非负整数计数下不会超过 100%，若超过说明公式或计数有误。报告另列受影响的唯一原始 case 数帮助解释。
 
@@ -124,25 +128,25 @@ N1 = R1 + T1
 
 这些比率是描述性 QA 数据，不是阈值、配额、PASS/FAIL、Oracle/nop、RewardKit reward、gate、num/den 或 dimension denominator。不得为了改善比率删除有效 case、拒绝必要新增或制造无关项。其他流程文件中的“问题数 ≤ 5%”只有在明确证明使用同一分子、分母和范围时才可作为本指标阈值；否则保持来源受限的独立流程规则。
 
-## 7. audit-only
+## 7. 纯咨询模式
 
-无修复授权时可以按公式写：`错误率：0%（0/N0）`，但必须紧邻注明：
+纯咨询或用户明确要求不修改时，可以按公式写：`错误率：0%（0/N0）`，但必须紧邻注明：
 
-> 本轮为 audit-only，未授权修复；0 仅表示 F=0，不代表未发现问题。
+> 本轮为只读咨询，未授权修复；0 仅表示 F=0，不代表未发现问题。本轮未完成、未返修、未作业交付自检该作业。
 
-同时报告已确认未修复 issue 数、issue_id、受影响 case 和阻塞项。漏召率只有在实际新增有效 case 时才非零；audit-only 通常 `A=0`，但不能用 0 掩盖建议新增项，建议项另列为待授权。
+同时报告已确认未修复 issue 数、issue_id、受影响 case 和阻塞项。漏召率只有在实际新增有效 case 时才非零；纯咨询通常 `A=0`，不能用 0 掩盖建议新增项。
 
-## 8. 报告和可交付结论
+## 8. 强制报告和测试侧交付结论
 
-仅在用户或项目要求时创建报告文件；否则在聊天中使用同一口径。模板见 [../assets/qa_report.template.md](../assets/qa_report.template.md)。
+完成、返修或作业交付自检 WorkC 作业时，必须使用 [../assets/qa_report.template.md](../assets/qa_report.template.md) 生成或更新题包根目录 `qa_report.md`。即使 tests 无需修改，作业交付自检也必须落盘报告；缺少本轮报告不得声明作业完成。只有纯咨询或明确不修改时才可 chat-only，并必须使用上一节的未完成声明。
 
-报告至少包含：状态元组、正式规则来源、基线 hash、case 三套计数、issue 台账、F/未修复/受影响 case/非 case 问题、AR/AT/A/DR/DT/D/R1/T1/N1、两项指标、run freshness、差异和限制。
+报告至少包含：最大可写边界、实际 `tests/**` allowlist、根目录报告状态、实际 test allowlist 外零变化审计（根目录 `qa_report.md` 为唯一固定例外）、正式规则来源、基线 hash、case 三套计数、issue 台账、F/未修复/受影响 case/非 case 问题、AR/AT/A/DR/DT/D/R1/T1/N1、两项指标、run freshness、差异和限制。
 
 把结论拆成：
 
-- `artifact_handoff_ready`：交付文件与包完整；
+- `test_delivery_handoff_ready`：授权的测试侧文件和强制 `qa_report.md` 可交接；
 - `evaluation_certified`：适用检查完整、runner 健康且结果新鲜；
-- `platform_submission_ready`：满足平台提交前提；
+- `platform_submission_ready`：满足外部提交前提；
 - `external_submission`：实际提交动作与最终状态。
 
-上传文件不等于提交成功；页面仍显示进行中或平台未收口时，不得声明提交完成。
+完整包可以读取冻结内容，但交付前必须在本轮生成或更新根目录 `qa_report.md`，且只能生成在题包外或用户明确指定的外部位置；tests 未变化时使用 `mutation=report-only`，不得以 `mutation=none` 或 chat-only 声称完整包已完成。不得在题包内创建 sidecar、staging 或临时包。打包不扩大写权，也不能替代报告。上传文件不等于提交成功。
