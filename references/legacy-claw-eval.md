@@ -1,8 +1,8 @@
 # 旧式 ClawEval / PinchBench 参考
 
-本参考只用于 WorkC 作业的测试侧完成、返修和作业验证，覆盖以 `rubrics.py + test_outputs.py` 为主的旧式题。题包内可修改内容不得超出实际授权的 `tests/**` 子集；完成、返修或作业交付自检必须同步生成或更新根目录 `qa_report.md`。除根目录 `qa_report.md` 这个固定例外外，所有 tests 外业务文件、environment、solution、task/materialization 和根目录脚本均冻结，只可作为 evidence 读取。不同批次可能是多轮对话/工具调用型，也可能是输出文件型；以本题材料和 runner 为准。
+本参考只用于 WorkC 作业的测试侧完成、返修和作业验证，覆盖正式评分架构仍以 `rubrics.py + test_outputs.py` 为主的旧式题。该架构继续有效，不要求普遍迁移。题包内可修改内容不得超出实际授权的 `tests/**` 子集；完成、返修或作业交付自检必须同步生成或更新根目录 `qa_report.md`。除根目录 `qa_report.md` 这个固定例外外，所有 tests 外业务文件、environment、solution、task/materialization 和根目录脚本均冻结，只可作为 evidence 读取。不同批次可能是多轮对话/工具调用型，也可能是输出文件型；以本题材料和 runner 为准。
 
-纯咨询或明确不修改时只做 V0/chat-only：不修改、不运行、不生成报告或打包，并明确本轮未完成作业。完整包交付前必须在本轮更新 `qa_report.md`；tests 未变化时使用 `report-only`，包只能写到题包外或用户明确指定的外部位置。文件名只作候选架构信号；两套结构并存或加载链不完整时标记 `hybrid/unresolved`，沿 runner 确认真实入口，不得把 legacy 机械迁移成 Seal。
+纯咨询或明确不修改时只做 V0/chat-only：不修改、不运行、不生成报告或打包，并明确本轮未完成作业。完整包交付前必须在本轮更新 `qa_report.md`；tests 未变化时使用 `report-only`，包只能写到题包外或用户明确指定的外部位置。文件名只作候选架构信号；两套结构并存或加载链不完整时标记 `hybrid/unresolved`，沿 runner 确认真实入口，不得把 legacy 机械迁移成 Seal。只有当前任务的正式格式、schema 和实际 runner 已明确采用新版 Seal/RewardKit 模型时，旧式 `rubrics.py`、`test_outputs.py` 或不同名称的 TOML 才是迁移/规范化输入，而不再是并列身份源；此时转用 [seal-rewardkit.md](seal-rewardkit.md) 的 `quality.toml + checks.py + criteria_manifest.yaml` 规则。
 
 ## 1. 固定主流程
 
@@ -15,9 +15,11 @@
 - 多轮对话型：grader 可能提供 MUST_ASK、澄清质量、最终答案和批次安全规则；instruction 是首轮用户请求；persona 是后续披露、模糊回答、错误说法和格式约束。
 - 输出文件型：从 instruction 与原始 resources 独立推导输出路径、schema、字段、数值、排序、去重、冲突和 CSV 规则。
 - grader 的默认权威角色可能被批次专用正式规则覆盖；先查版本和适用范围。
-- 输出型 PinchBench 完全忽略 `ground_truth.json`：不读取、不引用、不用于人工交叉验证或运行时测试；ClawEval 是否允许独立推导后人工交叉检查，必须由当前 grader/批次规则明确授权。solution 和预计算字段不能成为运行时依赖，也不能覆盖独立推导。
+- 输出型 PinchBench 完全忽略 `ground_truth.json`：不读取、不引用、不用于人工交叉验证或运行时测试；`ground_truth.json` 默认禁读（SKILL.md 第 5 节硬性要求），ClawEval 期望值一律先从 instruction 与原始 resources 独立推导，是否允许独立推导后人工交叉检查，必须由当前 grader/批次规则明确授权，并在 QA 报告记录授权来源。solution 和预计算字段不能成为运行时依赖，也不能覆盖独立推导。
 
 ## 2. Rubric 设计
+
+以下规则适用于 runner 当前确实加载 `rubrics.py/test_outputs.py` 的 legacy 评分契约。不要仅因新版存在 `quality.toml` 就要求所有旧题迁移，也不要给一个有效 legacy 题机械补建 `quality.toml`、`checks.py` 或 `criteria_manifest.yaml`。反之，若当前任务正式 schema/runner 已声明新版契约，则 legacy rubric 只能作为迁移时提取语义与来源的输入：最终身份按新版 `quality.toml` 的 `[[criterion]]` 与实际注册的 `checks.py` check 分别确定，manifest 只是聚合投影。
 
 每条 rubric：
 

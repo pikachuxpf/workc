@@ -51,14 +51,36 @@
 - 缺隔离或 secrets 时应 BLOCKED，不得绕过；
 - 最终差异若包含 actual test allowlist 与 `/qa_report.md` 之外的题包路径，`test_delivery_handoff_ready=NO/BLOCKED`。
 
-## 5. 架构回归
+## 5. 架构与身份回归
 
-- 旧式结构：统计唯一 `RUBRIC_*` 与独立评分 `test_*`；
-- Seal：统计唯一 manifest `angle_id` 与真实 registry/final result ID；
+- 旧式结构仍是受支持输入：统计唯一 `RUBRIC_*` 与独立评分 `test_*`，不得机械迁移；
+- 新格式 `R0` 统计 canonical `tests/**/quality.toml` 内可解析的 `[[criterion]]` 条目；每条计 1，不按文件数或 manifest 行数，也不因重复/缺失 `id` 先行去重；这些 ID 缺陷另登记 issue；
+- `T0` 独立统计 `tests/**/checks.py` 实际实现/注册的最终评分 result ID；factory 产生多个 ID 时逐个计数，重复运行/重试不增加；
+- `criteria_manifest.yaml` 聚合 quality 与 deterministic/check rows，但自身不贡献身份；创建/再生成 manifest 为 `A=0`；
+- manifest quality row 按 `quality.toml` target 校验，deterministic/check row 按 `checks.py` target 校验；不得要求 quality criterion 映射到 `checks.py`；
 - RewardKit 0.1.7 的注册参数 ID 与最终机器 ID 分层报告；
 - orphan、ghost、duplicate registration 不得互相抵消；
-- 不给 Seal 机械补建旧式文件；
-- 不因识别业务 claim 而修改业务载体；业务内容只作为只读 evidence。
+- 正式文件名必须为 `quality.toml`；无歧义 rename/case normalization 与身份保持格式迁移均 `A=0`；
+- alias/case 归一后的 path 或 identity collision 必须 BLOCKED，不覆盖、不任选；
+- 仅当正式 claim/当前 runner 要求且内容可可靠推导时创建缺失 `quality.toml`，不得创建空文件、placeholder 或为每个目录机械创建；
+- 不给 Seal 机械补建旧式文件；不因识别业务 claim 而修改业务载体，业务内容只作只读 evidence。
+
+### 5.1 必测样例
+
+| 输入场景 | 预期 |
+|---|---|
+| canonical `quality.toml` + `checks.py` | 分别建立 R0、T0，`N0=R0+T0` |
+| 只有 canonical `quality.toml` 与其 manifest 投影，无 deterministic check | 合法；按 `[[criterion]]` 计算 R0，`T0=0`，不机械补 `checks.py`；freshness 记录 checks 为 `ABSENT_ALLOWED_BY_CLAIM_RUNNER` |
+| 只有 deterministic `checks.py`，无 quality | 合法；`R0=0`，按实际 result ID 计算 T0，不机械补 quality；freshness 记录 quality 为 `ABSENT_ALLOWED_BY_CLAIM_RUNNER` |
+| 正式 claim/runner 要求 quality，但文件缺失且内容可推导 | 创建非空 canonical `quality.toml`；已有身份迁移 `A=0`，真正新 criterion 才 `AR+1` |
+| `Quality.toml` 或明确 alias 唯一映射到 canonical path | 规范化为 `quality.toml`；身份保持，`A=0` |
+| 多个 alias/case 路径归一到同一 canonical path，或身份碰撞 | `BLOCKED`；保留证据，不覆盖/合并/任选 |
+| manifest 遗漏、额外或重复 quality/check rows | 分 scorer target 报 manifest sync issue；不改变 R0/T0；manifest 不计数 |
+| 一个 quality criterion + 一个 check | `R0=1,T0=1,N0=2`；manifest 行不能使 N0 变为 3 |
+| 在前项基础上新增一个 criterion/check 对 | `AR=1,AT=1,A=2` |
+| 一个 factory 注册三个最终 result ID | T/AT 按三个 ID 计；调用次数、重试次数不计 |
+| 两个 `[[criterion]]` 条目使用同一 ID，或其中一个缺失 ID | `R0=2`；两个物理条目都计数，同时登记 duplicate/schema issue；manifest 投影无法无歧义闭合时 `BLOCKED` |
+| 纯咨询 | 零写入；不创建 `qa_report.md`，声明未完成/未返修/未作业交付自检 |
 
 ## 6. 指标回归
 
@@ -71,13 +93,14 @@
 | N0=0 | 错误率 N/A（0/0） |
 | N0=0,A=2 | 漏召率 100%（2/2） |
 | N0=0,A=0 | 漏召率 N/A（0/0） |
-| 同一根因跨 rubric/test | F 去重；AR/AT 不按 issue 去重 |
+| 同一根因跨 rubric/test | F 去重；AR/AT 独立且不按 issue 去重 |
 | 两个独立问题 | 两个 issue_id；均修复且 FRESH/PASS 后 F=2 |
-| 纯 rename/move | A=0 |
+| rename/move、quality 大小写归一、身份保持格式迁移 | A=0 |
+| manifest 创建/再生成 | A=0，不贡献 R/T 身份 |
 | 一个 rubric/test 对拆成两对 | 每层最多一个继承原身份，其余进入 AR/AT |
 | 两项合并成一项 | 对应 DR/DT 增加 1 |
 | 重复注册 | 稳定身份计一次，重复登记 issue |
-| orphan criterion / ghost check | 各保留对应库存，登记映射 issue |
+| orphan criterion / ghost check | 各保留对应库存，登记映射 issue；不强制互相映射 |
 | 纯咨询发现问题 | F=0 并紧邻未修复、未完成声明 |
 | 基线不可靠 | 两项比率 N/A，不猜数 |
 | 自行引入后修掉 | 不计 F |
@@ -93,7 +116,11 @@
 - 实际 test allowlist 外零变化审计（根目录 `qa_report.md` 为唯一例外）；
 - 本轮报告生成/更新时间；
 - baseline ID/hash 与 architecture；
-- 物理定义、collected/registered、有效映射三套数；
+- artifact 路径规范化与 quality 文件名规范化分列；
+- discovered/canonical/normalized/created quality paths，以及碰撞/阻断状态；
+- manifest sync、各 row 的 scorer target 校验与 manifest 不计数声明；
+- raw-to-final identity mapping；
+- 物理定义、collected/registered、有效身份三套数；
 - issue_id、修复验证、未修复、受影响 case、非 case 问题；
 - AR/AT/A、DR/DT/D 和最终库存；
 - 错误率、漏召率、零分母和 N/A；

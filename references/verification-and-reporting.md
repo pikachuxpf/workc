@@ -46,19 +46,31 @@ rubric/criterion、test/check、权重、judge prompt、隔离方式、runner �
 
 ## 4. 原始 Case 基线
 
-先沿 `test.sh`、task 配置、import/registry、结果和聚合链确认真实架构；文件名只作候选信号。两套结构并存或加载链不完整时标记 `hybrid/unresolved`，不得任选一套或机械迁移；尤其不得给 Seal 补旧式文件，也不得把 legacy 机械改成 Seal。
+先沿 `test.sh`、task 配置、import/registry、结果和聚合链确认真实架构；legacy 是受支持输入，不得机械改成新格式。两套结构并存或加载链不完整时标记 `hybrid/unresolved`，不得任选一套、补空文件或猜主架构。
 
 在任何测试侧修改发生前，对同一份可靠基线快照记录来源、版本/hash 和：
 
-- `R0`：legacy 中唯一、正式计分的原始 `RUBRIC_*`；Seal 中唯一、正式计分的 manifest `angle_id`；
-- `T0`：legacy 中产生独立计分结果的原始 `test_*`；Seal 中唯一实际注册并产生独立计分结果的 check/registry 身份；
+- `R0`：新格式中，所有 canonical `tests/**/quality.toml` 内可解析的 `[[criterion]]` 条目数；每个 criterion 条目算一个 rubric case，不按文件数或 manifest 行数计，也不因 `id` 重复或缺失而先行去重。此类 ID 缺陷另登记 schema/duplicate issue。legacy 仍统计唯一、正式计分的原始 `RUBRIC_*`；
+- `T0`：独立统计 `tests/**/checks.py` 实际实现并注册的独立评分结果身份数；一个 factory 产生多个 result ID 时按 ID 数。legacy 仍统计产生独立计分结果的原始 `test_*`；
 - `N0 = R0 + T0`。
 
-按实际计分身份，不按文件、函数或运行次数计数：一个函数注册多个计分 ID，按 ID 数；参数化运行、重试、不同候选的重复执行不增加 case；正式条件项即使本次 skip 仍在库存；helper、fixture、setup、diagnostic、preflight、禁用项和未注册项不计有效评分 case。
+按实际稳定计分身份，不按文件、函数或运行次数计数。参数化重复运行、重试和不同候选的重复执行不增加 case；正式条件项即使本次 skip 仍在库存；helper、fixture、setup、diagnostic、preflight、禁用项和未注册项不计有效评分 case。
 
-同时分别报告：源码物理定义数、runner collected 数、有效一一映射数。重复身份只按稳定身份计一次，但重复是 issue。孤儿定义和幽灵 check 分别保留在其原始库存并登记映射问题，不能通过相互抵消隐藏。
+`tests/criteria_manifest.yaml` 是 quality 与 deterministic entries 的聚合摘要/索引，不贡献 rubric、criterion、test 或 check 身份；创建或再生成 manifest 本身 `A=0`。manifest 每行必须按其 scorer target 分别校验：quality 行指向对应 canonical `quality.toml` criterion，deterministic/check 行指向对应 `checks.py` 注册结果；不得要求 quality criterion 再映射到 `checks.py`。遗漏、额外、重复或错误 target 均登记 manifest sync issue，但不改变 `R0/T0/N0`。
 
-基线一旦冻结，后续新增、删除或合并不得回写 `R0/T0/N0`。无法可靠建立基线时，两项比率均写 `N/A`，但仍报告可确认的原始整数与原因。
+同时分别报告：源码物理定义数、runner collected/registered 数、有效映射数。对 quality 层，`R0` 直接按 `[[criterion]]` 物理条目逐条计数，重复或缺失 `id` 不去重并另报 issue；对 check 层，按实际独立评分 result ID 计数，重复注册执行不重复增加 T，但重复本身仍是 issue。孤儿与幽灵项保留在所属库存并登记映射问题，不能通过相互抵消隐藏。报告须给出 raw-to-final identity mapping，说明 alias、case、格式迁移、拆分、合并和新增后的身份归属。
+
+### 4.1 quality 路径规范化
+
+正式文件名必须为 `quality.toml`。先分开记录 artifact 路径规范化与 quality 文件名规范化，再列出 discovered、canonical、normalized、created quality paths：
+
+- 唯一且无歧义的文件名 rename/case normalization 为身份保持变更，`A=0`；
+- 身份保持的格式迁移 `A=0`；
+- alias/case 归一后若多个原始路径落到同一 canonical path 或身份冲突，必须 `BLOCKED`，不得覆盖、合并或任选其一；
+- 仅当正式 claim 或当前 runner 明确要求 quality criterion，且内容能从正式载体可靠推导时，才创建缺失的 `quality.toml`；不得为空、placeholder 或机械地为每个目录创建；
+- 新建文件不自动算新增：真正新增一个 criterion 才 `AR+1`；真正新增一个独立 check/result ID 才 `AT+1`。
+
+基线一旦冻结，后续新增、删除或合并不得回写 `R0/T0/N0`。无法可靠建立基线、规范化碰撞未消解或加载链无法确认时，两项比率均写 `N/A`，但仍报告可确认的原始整数与原因。
 
 ## 5. Issue、修复与新增
 
@@ -71,15 +83,15 @@ rubric/criterion、test/check、权重、judge prompt、隔离方式、runner �
 
 仅发现、部分修复、未验证、验证失败或 infrastructure 阻塞不计 `F`，分别列为未修复/待验证/阻塞。审查过程中自行引入后又修掉的问题不得计入。一个根因跨多个文件或 case、且一次修复可消除时，`F=1`；需要独立修复或验证的真实问题使用不同 issue_id。
 
-`AR/AT/A` 的单位是新增计分 case：
+`AR/AT/A` 的单位是新增计分身份，且两层独立：
 
-- `AR`：相对冻结基线新增的 rubric/manifest criterion；
-- `AT`：新增的 scoring test/registered check；
+- `AR`：相对冻结基线新增的 `[[criterion]]` 条目；legacy 仍按新增 rubric 稳定身份计；
+- `AT`：新增的 scoring test 或 `checks.py` registered result ID；
 - `A = AR + AT`。
 
-同一遗漏补 criterion 和 check 时通常 `AR=1, AT=1, A=2`。issue 去重只作用于 `F`，不作用于 `AR/AT/A`。新增观察窗口从基线快照到最终审查截止点；新增必须有当前 claim 来源、有效身份、实际注册/绑定并完成适用验证。
+同一遗漏补一个 criterion 和一个 check 时 `AR=1, AT=1, A=2`。issue 去重只作用于 `F`，不作用于 `AR/AT/A`。新增观察窗口从基线快照到最终审查截止点；新增必须有当前 claim 来源、有效身份、实际注册/绑定并完成适用验证。
 
-纯重构、等价断言强化、格式/描述调整、临时诊断、语义与身份不变的 rename/move 不计新增。名为 helper 但独立注册或产生分数的仍计 `AT`。
+纯重构、等价断言强化、描述调整、临时诊断、身份保持的 rename/move/格式迁移、无歧义的 `quality.toml` 文件名规范化，以及 manifest 的创建/再生成均不计新增。名为 helper 或 factory 但独立注册多个结果身份的，按最终 result ID 分别计 `AT`。
 
 拆分时用“评分事实、evidence、通过条件、计分身份”建立基线到最终映射：最多一个后继项继承原身份，其余独立计分后继项进入 `AR/AT`。
 
@@ -140,7 +152,7 @@ N1 = R1 + T1
 
 完成、返修或作业交付自检 WorkC 作业时，必须使用 [../assets/qa_report.template.md](../assets/qa_report.template.md) 生成或更新题包根目录 `qa_report.md`。即使 tests 无需修改，作业交付自检也必须落盘报告；缺少本轮报告不得声明作业完成。只有纯咨询或明确不修改时才可 chat-only，并必须使用上一节的未完成声明。
 
-报告至少包含：最大可写边界、实际 `tests/**` allowlist、根目录报告状态、实际 test allowlist 外零变化审计（根目录 `qa_report.md` 为唯一固定例外）、正式规则来源、基线 hash、case 三套计数、issue 台账、F/未修复/受影响 case/非 case 问题、AR/AT/A/DR/DT/D/R1/T1/N1、两项指标、run freshness、差异和限制。
+报告至少包含：最大可写边界、实际 `tests/**` allowlist、根目录报告状态、实际 test allowlist 外零变化审计（根目录 `qa_report.md` 为唯一固定例外）、正式规则来源、基线 hash、artifact 路径规范化、discovered/canonical/normalized/created quality paths、规范化碰撞/阻断状态、manifest sync、manifest 不计数声明、raw-to-final identity mapping、case 三套计数、issue 台账、F/未修复/受影响 case/非 case 问题、AR/AT/A/DR/DT/D/R1/T1/N1、两项指标、run freshness、差异和限制。
 
 把结论拆成：
 

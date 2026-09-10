@@ -1,6 +1,6 @@
 # workc
 
-面向 ZCode 的 WorkC、ClawEval、PinchBench 与 Seal 单题测试侧作业 Skill。它只完成或返修题包中的测试、验证、QA 报告和交付，不承接页面、服务、脚本、业务数据、业务 ZIP、API 状态等业务实现，也不是普通项目的通用质检 Skill。
+面向 ZCode 的 WorkC、ClawEval、PinchBench、Seal 与 RewardKit 单题测试侧作业 Skill。它只完成或返修题包中的测试、验证、QA 报告和交付，不承接页面、服务、脚本、业务数据、业务 ZIP、API 状态等业务实现，也不是普通项目的通用质检 Skill。新格式以 `quality.toml` 承载语义/judge criterion、以 `checks.py` 承载确定性/程序化 check，并由 `criteria_manifest.yaml` 聚合摘要；manifest 不定义身份，也不增加 case。
 
 ## 不可解除的写入边界
 
@@ -23,7 +23,7 @@ tests/**
 
 - 明确要求完成、返修或验证 WorkC、ClawEval、PinchBench、Seal 单题的测试侧作业；
 - 题包出现 `rubrics.py + test_outputs.py`，并要求测试侧修复、验证或交付；
-- 题包出现 `criteria_manifest.yaml + 分维度 checks.py`，并要求 RewardKit 测试侧作业；
+- 题包出现 quality-only、`quality.toml + checks.py`、确定性-only 的 `checks.py + criteria_manifest.yaml` 或相关 Seal/RewardKit runner 信号，并要求测试侧作业；
 - 对上述测试侧作业运行 Oracle/nop、编写强制 QA 报告、审计冻结差异或制作外部交付包。
 
 不应使用：
@@ -78,14 +78,21 @@ tests/test_outputs.py
 
 ```text
 tests/criteria_manifest.yaml
-tests/<dimension>/checks.py
-tests/reward.toml
-tests/test.sh
+tests/<dimension>/quality.toml   # 仅语义/judge 评分单元需要
+tests/<dimension>/checks.py      # 确定性/程序化检查
+tests/test.sh                    # 以实际 runner 为准
 ```
 
-Manifest、实际注册 checks、runner 和聚合共同构成评分契约，不是旧式两个文件的机械改名。除非实际 runner 要求，不补建 `rubrics.py` 或 `test_outputs.py`。详见 [Seal / RewardKit 参考](./references/seal-rewardkit.md)。
+`quality.toml` 定义语义/judge 质量 criterion，`checks.py` 定义确定性/程序化 check，`criteria_manifest.yaml` 聚合摘要当前实际存在的两类评分项。Manifest 不是身份权威，每行增加零个 case；按正式 claim 与 runner，quality-only、quality + checks 和确定性-only 的 `checks.py + manifest` 都可合法，manifest 单独存在不能建立评分身份。旧式 `rubrics.py + test_outputs.py` 继续受支持；只有当前任务正式使用或明确要求新格式时才规范化或迁移。详见 [Seal / RewardKit 参考](./references/seal-rewardkit.md)。
 
-两套信号并存时必须追实际 import、registry 和聚合链。架构识别只决定如何完成测试侧作业，不产生 tests 外写权。
+两套信号并存时必须追实际 import、registry、scorer target 和聚合链。architecture 保持 `legacy` / `seal-rewardkit` / `hybrid` / `unresolved`；架构识别只决定如何完成测试侧作业，不产生 tests 外写权。
+
+新格式规则：
+
+- 文件名严格为小写 `quality.toml`。可写完成/返修时，仅在实际 tests allowlist 内自动规范化一个语义明确的替代 TOML 质量文件名或大小写变体；目标已存在或多个别名冲突则不覆盖、不合并，标记 `BLOCKED`。咨询只报告。
+- 仅当正式当前 claim/runner 要求该评分单元具备语义/judge criterion 且内容可权威推导时，才可创建缺失的 `quality.toml`；禁止空文件、占位文件和逐目录机械补建。
+- 常见 schema：`[judge]` 使用 `judge`、`files`、`atif-trajectory`、`mode`、`timeout`；重复 `[[criterion]]` 使用 `name`、`id`、`description`、`type`、`points`、`weight`；`[scoring]` 使用 `aggregation`。实际任务 schema 与 runner 优先，不包含 canary 注释。
+- Manifest 常见顶层字段是 `version`、`score_range`、`dimensions`、`criteria`；行常见 `angle_id`、`angle`、`rule_hint`、`dimension`、`weight`、`evidence`、`scorer`、`score_type`、`source`。质量 scorer 如 `output/quality.toml::output.narrative_quality`，确定性 scorer 如 `output/checks.py::delivery_form`。须验证源身份到行的 exact-once projection、scorer target 及 dimension/weight/evidence/source 一致性；不要求质量 criterion 映射到 `checks.py`。
 
 ## 测试侧完成、返修与作业验证
 
@@ -93,6 +100,7 @@ Manifest、实际注册 checks、runner 和聚合共同构成评分契约，不�
 - 作业交付自检且 tests 无需修复：题包内仅写根目录 `qa_report.md`。
 - 纯咨询或明确不修改：chat-only，不创建报告，不得声称完成作业。
 - 业务实现请求：退出 WorkC 写入流程；最多只读说明为何超出范围。
+- Seal/RewardKit 按评分单元盘点 canonical `quality.toml`、`checks.py`、manifest 投影、scorer target 与 runner 注册，再修 criterion/check 或重建摘要；不得用 manifest 补行替代真实身份。
 
 正确性从当前正式规则与原始 evidence 独立推导。业务源码、业务产物、persona、fixtures 和正式载体可以只读用于建立预期，但不能由 WorkC 修改。tests、ground truth、solution、旧 QA、历史题和 Oracle 输出默认不是业务真值。
 
@@ -101,17 +109,19 @@ Manifest、实际注册 checks、runner 和聚合共同构成评分契约，不�
 从修改前冻结基线记录：
 
 ```text
-R0 = 原始 rubric/manifest criterion 数
-T0 = 原始 scoring test/registered check 数
-N0 = R0 + T0
+R0 = legacy 稳定 RUBRIC_*；或 canonical quality.toml 中可解析 [[criterion]] 条目数（每条均计 1，重复/缺失 id 另报 issue）
+T0 = legacy 独立评分 test_*；或 checks.py 实现/注册的独立实际评分 check 数
+N0 = R0 + T0（manifest 每行增加零个 case）
 F  = 已找到、修复并完成 FRESH 验证的独立问题数
-A  = AR + AT（新增 rubric/criterion + 新增 scoring test/check）
+AR = 新增 rubric/criterion 身份数
+AT = 新增 scoring test/check 身份数
+A  = AR + AT
 
 错误率 = F / N0
 漏召率 = A / (N0 + A)
 ```
 
-展示如 `50%（1/2）`、`33.33%（1/3）`。`F` 按 issue 根因去重，`A` 按新增计分 case 计数；同一遗漏补 rubric 和 test 通常 `A=2`。错误率可能超过 100%，不截断。这些指标是描述性 QA 数据，不是 PASS/FAIL、reward 或 gate。
+展示如 `50%（1/2）`、`33.33%（1/3）`。`F` 按 issue 根因去重，`AR/AT` 独立、`A=AR+AT`；缺一个质量 criterion 并缺一个 check 通常 `A=2`。文件名规范化、manifest 创建/再生成、身份不变的迁移均为 `A=0`。错误率可能超过 100%，不截断。这些指标是描述性 QA 数据，不是 PASS/FAIL、reward 或 gate。
 
 完整计数、零分母、拆分/合并和运行新鲜度见 [验证与报告](./references/verification-and-reporting.md)。完成、返修或作业交付自检时必须使用 [QA 报告模板](./assets/qa_report.template.md) 生成或更新根目录 `qa_report.md`。
 
@@ -145,7 +155,7 @@ cp .secrets/judge.env.example ~/.agents/skills/workc/.secrets/judge.env
 - `evaluation_certified`：适用评测完整、健康且结果新鲜；
 - `platform_submission_ready`：具备外部提交前提。
 
-报告还必须明确实际 test allowlist、该 allowlist 外零变化（根目录 `qa_report.md` 为唯一例外）、运行范围和未运行项。保存、打包或上传不等于提交成功；只有验证平台最终状态后才能报告实际提交成功。
+报告还必须明确实际 test allowlist、该 allowlist 外零变化（根目录 `qa_report.md` 为唯一例外）、架构与 canonical quality/别名处理、`R0/T0/N0` 及 manifest 零计数、manifest exact-once projection 与 scorer target 校验、`F/AR/AT/A`、确定性-only 单元依据、运行范围、freshness 和未运行项。`quality.toml`、`checks.py`、manifest、scorer target、runner 或其他绑定输入变化都会使旧结果 `STALE`。保存、打包或上传不等于提交成功；只有验证平台最终状态后才能报告实际提交成功。
 
 ## 目录
 

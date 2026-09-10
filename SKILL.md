@@ -1,6 +1,6 @@
 ---
 name: workc
-description: WorkC、ClawEval、PinchBench 或 Seal 单题的测试侧作业完成、返修、作业验证、Oracle/nop、QA 报告与交付流程。只处理这些题包的 tests 侧交付，不承接业务实现或通用质检。题包内最大可写范围固定为 tests/** 与根目录 qa_report.md；完成、返修或作业交付自检必须生成或更新 qa_report.md，其余路径全部冻结。仅在用户明确提到 WorkC、ClawEval、PinchBench 或 Seal 单题并要求测试侧作业，或目录出现 rubrics.py + test_outputs.py、criteria_manifest.yaml + 分维度 checks.py 等成套评测信号并明确要求该题包的测试侧作业时使用。
+description: WorkC、ClawEval、PinchBench、Seal 或 RewardKit 单题的测试侧作业完成、返修、作业验证、Oracle/nop、QA 报告与交付流程。只处理这些题包的 tests 侧交付，不承接业务实现或通用质检。题包内最大可写范围固定为 tests/** 与根目录 qa_report.md；完成、返修或作业交付自检必须生成或更新 qa_report.md，其余路径全部冻结。仅在用户明确要求这些题包的测试侧作业，或目录出现 legacy 的 rubrics.py + test_outputs.py、新格式的 quality.toml、checks.py、criteria_manifest.yaml 与对应 runner 信号并明确要求测试侧作业时使用；新格式按正式 claim 独立支持 quality-only、quality + checks 和 checks-only，manifest 单独存在不构成评分身份。
 ---
 
 # WorkC 测试侧作业内核
@@ -19,6 +19,7 @@ tests/**
 - 实际 test allowlist 只能在 `tests/**` 内继续收窄，不能扩大。
 - `qa_report.md` 是完成、返修或作业交付自检 WorkC 作业的强制交付物，即使 tests 无需修改也要生成或更新。
 - `tests/**` 和根目录 `qa_report.md` 之外的题包路径全部冻结。用户指令、instruction、materialization、项目配置、复制到副本或打包请求都不能解除此边界。
+- **禁止读取题包根目录的 `ground_truth.json`**（硬性要求，见第 5 节）：期望值必须先从正式载体独立推导；无授权读取即按越界处理，已在报告中引用的 GT 内容必须废弃并重新独立推导。
 - 纯咨询或用户明确要求不修改时可 chat-only，但必须声明本轮未完成、未返修或未作业交付自检该作业。
 - 若任务必须修改 tests 外文件，标为 `OUT_OF_SCOPE/BLOCKED` 并退出 WorkC 写入流程，不得顺手修复。
 
@@ -65,11 +66,13 @@ AI 生成或修改的 rubric/criterion、test/check、expected value、judge 结
 
 | 信号 | 候选架构 | 评分身份 | 实际检查 |
 |---|---|---|---|
-| `tests/rubrics.py` + `tests/test_outputs.py` | legacy | `RUBRIC_*` | 评分 `test_*`、judge、class/tier |
-| `tests/criteria_manifest.yaml` + `tests/*/checks.py` | seal-rewardkit | `angle_id` | 实际注册 check、dimension、RewardKit |
-| 两套并存或链路不完整 | hybrid/unresolved | 追 runner | 不补文件、不猜主架构 |
+| `tests/rubrics.py` + `tests/test_outputs.py` | legacy | 唯一稳定 `RUBRIC_*` | 评分 `test_*`、judge、class/tier |
+| `tests/**/quality.toml` + `tests/criteria_manifest.yaml`，由 runner 使用；`checks.py` 可有可无 | seal-rewardkit | `quality.toml` 的稳定 `[[criterion]]` | 有 `checks.py` 时统计其实际评分 check；quality-only 时为 0 |
+| `tests/**/checks.py` + `tests/criteria_manifest.yaml`，无 `quality.toml`，且 runner 只要求确定性评分 | seal-rewardkit | 无 quality criterion；manifest 不产生身份 | `checks.py` 实现/注册的实际评分 check |
+| 仅有 `tests/criteria_manifest.yaml`，或评分链缺件 | unresolved | manifest 不能建立身份，追正式 claim 与 runner | 区分陈旧索引、缺件与未决链路 |
+| legacy 与新格式并存或 runner 同时使用 | hybrid | 按当前 runner 分别取身份 | 按实际加载、注册与聚合链处理 |
 
-旧式 ClawEval 与输出型 PinchBench 见 [legacy-claw-eval.md](references/legacy-claw-eval.md)；Seal 见 [seal-rewardkit.md](references/seal-rewardkit.md)。不得把旧式文件模型泛化到 Seal，也不得给 Seal 机械补建 `rubrics.py` 或 `test_outputs.py`。
+Seal/RewardKit 新格式中，`tests/**/quality.toml` 定义语义/judge 质量 criterion，`tests/**/checks.py` 定义确定性/程序化 check，`tests/criteria_manifest.yaml` 聚合并摘要当前实际存在的两类评分项。按正式 claim 与 runner，允许 quality-only、quality + checks，也允许只含确定性 `checks.py` 而不含 `quality.toml`；manifest 不是身份权威，任何 manifest 行都增加零个 case。旧式 `rubrics.py` + `test_outputs.py` 仍是受支持的 legacy 输入；只有当前任务正式使用或明确要求新格式时才规范化或迁移，不做普遍迁移。旧式 ClawEval 与输出型 PinchBench 见 [legacy-claw-eval.md](references/legacy-claw-eval.md)；Seal 见 [seal-rewardkit.md](references/seal-rewardkit.md)。不得把旧式文件模型泛化到 Seal，也不得给 Seal 机械补建 `rubrics.py` 或 `test_outputs.py`。
 
 架构识别只决定如何完成 tests 侧作业，不产生业务文件写权。
 
@@ -84,7 +87,9 @@ explicit_precedence | recast | resolution | reason
 
 来源可能包括用户请求、instruction、workspace policy、local documents、tool description、fixtures/resources、grader、materialization 和 runner。它们可以决定测试应覆盖什么，但不能把 tests 外路径变为可写。
 
-persona 是被测场景，不自动覆盖政策；tests、solution、旧 QA、历史题和示例默认只是交叉检查材料。输出型 PinchBench 完全忽略 `ground_truth.json`；其他架构只有正式规则明确授权时，才可在独立推导后人工离线交叉检查。任何架构都不得让 tests、候选或通用 runner 运行时读取 ground truth。两个正式载体无法消解时，只阻断受影响 claim。
+persona 是被测场景，不自动覆盖政策；tests、solution、旧 QA、历史题和示例默认只是交叉检查材料。
+
+**`ground_truth.json` 硬性禁读**：除输出型 PinchBench 完全忽略它之外，任何架构下 WorkC 默认一律不读取题包根目录的 `ground_truth.json`——不打开、不解析、不引用其内容作为推导输入，也不得让它进入 QA 报告的证据链。tests 的期望值必须先从正式载体（instruction、workspace policy、fixtures、materialization 与 runner 声明的 evidence）独立推导。只有当**当前题目的正式规则明确授权**（例如 Seal 题的 grader 契约把 GT 声明为允许的人工离线交叉检查材料）且已完成独立推导时，才可在评分进程外做人工离线交叉检查，并在 QA 报告中记录授权来源与使用范围。无授权的读取即按越界处理：作废受影响的推导结论并从正式载体重新推导。任何架构都不得让 tests、候选或通用 runner 运行时读取 ground truth。两个正式载体无法消解时，只阻断受影响 claim。
 
 ## 6. 基线、冻结与差异
 
@@ -97,7 +102,7 @@ persona 是被测场景，不自动覆盖政策；tests、solution、旧 QA、�
 
 ## 7. 完成测试侧作业
 
-编辑前建立覆盖矩阵，每行一个独立事实：来源、预期、条件、评分身份、检查机制、evidence、权重层级。定义与评分 check 双向闭合；同一业务事实只能计权一次。
+编辑前建立覆盖矩阵，每行一个独立事实：来源、预期、条件、评分身份、检查机制、evidence、权重层级。按架构分别闭合：legacy rubric ↔ scoring test；新版 quality criterion ↔ quality manifest row ↔ quality runtime result；deterministic check ↔ deterministic manifest row ↔ check runtime result。quality 与 deterministic 链按正式 claim/runner 独立存在，不要求互相成对；同一业务事实只能计权一次。
 
 - 可确定复算的文件、JSON/CSV/ZIP、类型、字段、数字、集合、ID、排序、时间、endpoint、参数、次数和哈希用代码检查；
 - 真正需要语义判断的澄清、解释、因果、建议、冲突识别与表达质量才用 judge；
@@ -105,8 +110,21 @@ persona 是被测场景，不自动覆盖政策；tests、solution、旧 QA、�
 - 缺失 evidence 要区分候选缺失、场景不适用、可选载体缺失与 harness/infrastructure 故障；核心缺失不得普通 `return` 通过；
 - WorkC 可以只读业务文件和产物作为 evidence，但绝不修复它们；
 - 修改只发生在实际授权的 `tests/**` 子集；每轮完成、返修或作业交付自检都同步生成或更新根目录 `qa_report.md`。
+- 对 Seal/RewardKit 先按评分单元盘点 `quality.toml`、`checks.py`、manifest 投影和 runner 注册，再决定修 criterion、修 check、规范化单一文件别名或重建 manifest；不得用 manifest 补行替代真实评分身份。
 
-## 8. 安全与候选隔离
+## 8. Seal / RewardKit 新格式
+
+按评分单元核对 `quality.toml`、`checks.py`、`criteria_manifest.yaml` 与当前 runner：
+
+- `quality.toml` 定义语义/judge 质量标准；`checks.py` 定义确定性/程序化检查；`criteria_manifest.yaml` 聚合并摘要两者。
+- 文件名严格使用小写 `quality.toml`。仅在可写的完成/返修模式、且文件位于实际 tests allowlist 内时，自动把一个语义明确的替代 TOML 质量文件名或大小写变体规范化为 `quality.toml`。目标已存在或多个别名冲突时，不覆盖、不合并，标记 `BLOCKED`；咨询模式只报告，不改名。
+- 缺失 `quality.toml` 仅可在正式当前 claim 或 runner 要求该评分单元承载语义/judge criterion、且可从权威来源推导内容时创建。不得创建空文件或占位文件，也不得要求每个 dimension/check 目录都有它；只有确定性 `checks.py` 而无 `quality.toml` 是合法形态。
+- 常见文档 schema 为：`[judge]` 下 `judge`、`files`、`atif-trajectory`、`mode`、`timeout`；重复 `[[criterion]]` 下 `name`、`id`、`description`、`type`、`points`、`weight`；`[scoring]` 下 `aggregation`。实际任务 schema 与 runner 优先。连字符键 `atif-trajectory` 必须按 TOML 使用有效裸键或引号键；不包含 canary 注释。
+- `criteria_manifest.yaml` 常见顶层字段为 `version`、`score_range`、`dimensions`、`criteria`；criteria 行常见字段为 `angle_id`、`angle`、`rule_hint`、`dimension`、`weight`、`evidence`、`scorer`、`score_type`、`source`。实际任务 schema 与 runner 仍优先。
+- Manifest 不是身份权威，所有行都增加零个 case。质量行 scorer 形如 `output/quality.toml::output.narrative_quality`；确定性行形如 `output/checks.py::delivery_form`。验证源身份到 manifest 行的 exact-once projection、每行 scorer target 存在且正确，并闭合已加载 check 与运行时结果；不得要求质量 criterion 映射到 `checks.py`。
+- manifest 缺失、陈旧或单独存在时，先依正式 claim 和 runner 判断是应创建/再生成摘要、合法无 quality、缺失 criterion，还是链路未决；不得把 manifest 行反向当作 criterion 真值。
+
+## 9. 安全与候选隔离
 
 旧式规范要求时逐类判断 A–H：提示注入、凭据泄露、歧义操作确认、数据完整性、草稿限制、只读/工具克制、领域安全、紧迫压力抵抗。Seal 按 manifest、工具合同和实际 safety evidence 处理，不机械套旧式名称。
 
@@ -114,13 +132,13 @@ persona 是被测场景，不自动覆盖政策；tests、solution、旧 QA、�
 
 返修阶段可修改 allowlist 内的 `tests/**`；候选运行时必须把最终 tests 只读挂载。候选执行前还须验证：禁网；solution、fixtures 和全部 tests 外内容只读；临时 HOME/CWD/output；不挂载用户目录或 Skill secrets；环境变量显式 allowlist；超时、进程数和文件大小限制；运行前后冻结 hash。隔离不足时标记 `BLOCKED`，不能直接在宿主降级执行。
 
-## 9. 错误率与漏召率
+## 10. 错误率与漏召率
 
-修改前冻结：
+沿用历史公式，修改前冻结：
 
-- `R0`：legacy 的唯一原始 `RUBRIC_*`；Seal 的唯一 manifest `angle_id`；
-- `T0`：legacy 的独立评分 `test_*`；Seal 的唯一实际评分 check/registry 身份；
-- `N0 = R0 + T0`；
+- `R0`：legacy 的唯一稳定原始 `RUBRIC_*`；Seal 中所有 canonical `quality.toml` 内可解析的 `[[criterion]]` 条目数，一个 criterion 条目算一个 rubric case；重复或缺失 `id` 仍各计一个 R，并另登记 schema/duplicate issue，不先按 ID 去重；
+- `T0`：legacy 的独立实际评分 `test_*`；Seal 中由 `checks.py` 实现/注册的每个独立实际评分 check；
+- `N0 = R0 + T0`；manifest 不是身份来源，每行增加零个 case；
 - `F`：基线既有、已确认并修复、修复保留在最终文件中，且直接适用验证为 FRESH/PASS 的独立 issue 数；
 - `AR/AT`：新增 rubric/criterion 与 scoring test/check；`A = AR + AT`。
 
@@ -129,11 +147,11 @@ persona 是被测场景，不自动覆盖政策；tests、solution、旧 QA、�
 漏召率 = A / (N0 + A)
 ```
 
-`F` 按 issue 根因去重，`A` 按新增计分身份计数。同一遗漏补 criterion 和 check 通常 `A=2`。纯 rename/move、helper、diagnostic、未注册或未验证项不计新增。删除/合并另记 `DR/DT/D`，不回写冻结基线。
+`F` 按 issue 根因去重，`A` 按新增计分身份计数。缺一个质量 criterion 并缺一个 `checks.py` check 通常 `A=2`。文件名规范化、manifest 创建/再生成和保持身份不变的格式迁移均为 `A=0`。纯 rename/move、helper、diagnostic、未注册或未验证项不计新增。删除/合并另记 `DR/DT/D`，不回写冻结基线。
 
 百分比最多两位小数，括号保留未约分整数，如 `50%（1/2）`、`33.33%（1/3）`。错误率可超过 100%，不得截断。无可靠基线时写 N/A。纯咨询可报告 `F=0`，但必须紧邻说明“未授权修复，不代表未发现问题”，且不能声称完成作业。完整规则见 [verification-and-reporting.md](references/verification-and-reporting.md)。
 
-## 10. 验证与新鲜度
+## 11. 验证与新鲜度
 
 - V0：文本、目录、diff 与规则来源；
 - V1：语法、schema、归档和确定性 parser；
@@ -142,13 +160,13 @@ persona 是被测场景，不自动覆盖政策；tests、solution、旧 QA、�
 - V4：judge；
 - V5：外部打包、上传或提交。
 
-优先使用项目 runner。每次运行绑定 grader、runner、rules、fixture、candidate、conversation、evidence、probe、environment、config 和 result digest。相关输入变化即使旧结果时间较新也变为 `STALE`；范围不足为 `UNVERIFIED`。不得把定向回归冒充全量，也不得拼接不同 run。
+优先使用项目 runner。每次运行绑定 grader、runner、rules、fixture、candidate、conversation、evidence、probe、environment、config 和 result digest；Seal/RewardKit 按正式 claim/runner 分别绑定适用的 canonical `quality.toml`、实际加载的 `checks.py`、manifest 与 scorer target，并把合法缺席记为 `ABSENT_ALLOWED_BY_CLAIM_RUNNER`，同时验证适用条目的 exact-once projection。任一相关输入、criterion 身份、check 注册、manifest 投影、scorer target 或合法缺席依据变化，即使旧结果时间较新也变为 `STALE`；范围不足为 `UNVERIFIED`。不得把定向回归冒充全量，也不得拼接不同 run。
 
 统一状态：`PASS`、`FAIL`、`PARTIAL`、`BLOCKED`、`NOT_RUN`。Judge 401/402/429/5xx、连接和超时是 infrastructure failure，不直接算候选失败。
 
-## 11. 强制 QA 报告与交付
+## 12. 强制 QA 报告与交付
 
-完成、返修或作业交付自检 WorkC 作业时，必须用 [qa_report.template.md](assets/qa_report.template.md) 生成或更新题包根目录 `qa_report.md`。报告至少包含：固定最大写入边界、实际 test allowlist、实际 test allowlist 外零变化审计（根目录 `qa_report.md` 为唯一例外）、规则与基线、case 库存、issue 台账、两项指标、run freshness、差异和限制。
+完成、返修或作业交付自检 WorkC 作业时，必须用 [qa_report.template.md](assets/qa_report.template.md) 生成或更新题包根目录 `qa_report.md`。报告至少包含：固定最大写入边界、实际 test allowlist、实际 test allowlist 外零变化审计（根目录 `qa_report.md` 为唯一例外）、规则与架构、canonical quality 文件及别名处理结果、`R0/T0/N0` 与 manifest 零计数、case 库存、manifest exact-once projection/scorer target 校验、issue 台账、`F/AR/AT/A` 和两项指标、run freshness、差异、阻塞项与限制。确定性-only 单元须明确其无 `quality.toml` 是否由当前 claim/runner 允许。
 
 只读咨询不创建报告，但必须明确本轮不是完成、返修或作业交付自检。
 
@@ -160,7 +178,7 @@ persona 是被测场景，不自动覆盖政策；tests、solution、旧 QA、�
 
 完整包可读取冻结文件，但交付前必须在本轮生成或更新根目录 `qa_report.md`，且包只能生成到题包外或用户明确指定的外部位置。tests 未变化时使用 `report-only`；打包不扩大题包写权，也不能替代报告。上传不等于提交成功。
 
-## 12. Secrets 与发布
+## 13. Secrets 与发布
 
 真实 judge 配置只放 `~/.agents/skills/workc/.secrets/judge.env`。代理、通用编排层和候选绝不读取、打印、转写、解析、复制或提交其值；只有受信任的独立 judge 进程/容器可在 V4 直接解析 env-file。候选先在无 secrets 环境完成；judge 不得再启动候选。
 

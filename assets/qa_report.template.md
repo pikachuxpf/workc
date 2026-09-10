@@ -12,7 +12,7 @@
 | blocking_issue_ids | {{IDs / none}} |
 | report_generated_at | {{ISO-8601 with timezone}} |
 | reviewer/tool_version | {{value}} |
-| template_version | 1.0 |
+| template_version | 1.1 |
 
 {{用 2–4 句说明完成了什么、未完成什么、不能声称什么。}}
 
@@ -45,17 +45,34 @@
 | baseline_kind | {{original package / normalized directory / pre-fix worktree / commit / platform snapshot}} |
 | baseline_source / id | {{value}} |
 | digest_algorithm / digest | SHA-256 / {{value}} |
-| normalization_profile | {{path case/separator; exclusions; ZIP raw bytes or normalized member manifest; duplicate/path traversal checks}} |
+| artifact_path_normalization | {{path separators/case policy; archive member policy; exclusions; traversal/duplicate checks}} |
+| quality_filename_normalization | {{仅 `quality.toml`；alias/case 规则；与 artifact 路径规范化分开}} |
 | captured_at | {{ISO-8601}} |
 
-### 2.2 数据字典与恒等式
+### 2.2 Quality 路径与 Manifest
+
+| 字段 | 值 |
+|---|---|
+| discovered_quality_paths | {{原始发现路径；none 亦须填写}} |
+| canonical_quality_paths | {{应为 tests/**/quality.toml}} |
+| normalized_quality_paths | {{raw → canonical；未变化也须填写}} |
+| created_quality_paths | {{仅正式 claim/runner 要求且内容可推导时创建；none}} |
+| quality_collision_status | {{CLEAR / BLOCKED；path/identity collision IDs}} |
+| quality_block_status | {{CLEAR / BLOCKED；原因}} |
+| manifest_path / status | {{tests/criteria_manifest.yaml / present/absent/created/regenerated}} |
+| manifest_sync | {{PASS/FAIL/BLOCKED；omitted/extra/duplicate rows；scorer targets；dimension/weight/evidence/source consistency}} |
+| manifest_identity_rule | `criteria_manifest.yaml` 仅为 quality 与 deterministic/check 的聚合摘要/索引，不贡献 R/T 身份；创建或再生成 manifest 为 A=0 |
+
+manifest quality row 按 canonical `quality.toml` criterion target 校验；deterministic/check row 按 `checks.py` 注册 result ID target 校验。不得要求 quality criterion 映射到 `checks.py`。
+
+### 2.3 数据字典与恒等式
 
 | 符号 | 定义 | 数值 |
 |---|---|---:|
-| R0 | 冻结基线中 rubric/criterion 稳定计分身份数 | {{R0}} |
-| T0 | 冻结基线中 scoring test/registered check 稳定计分身份数 | {{T0}} |
+| R0 | 新格式：canonical `tests/**/quality.toml` 中可解析 `[[criterion]]` 条目数（每个 criterion 计一个 rubric case；重复/缺失 id 不去重，另报 issue）；legacy：唯一正式 `RUBRIC_*` | {{R0}} |
+| T0 | 新格式：`tests/**/checks.py` 实际实现/注册的独立最终 result ID 数；legacy：独立评分 `test_*` | {{T0}} |
 | N0 | R0 + T0 | {{N0}} |
-| AR | 新增且有效的 rubric/criterion 数 | {{AR}} |
+| AR | 新格式新增 `[[criterion]]` 条目数；legacy 新增有效 rubric 身份数 | {{AR}} |
 | AT | 新增且有效的 scoring test/registered check 数 | {{AT}} |
 | A | AR + AT | {{A}} |
 | DR | 删除/合并的原始 rubric/criterion 数 | {{DR}} |
@@ -66,24 +83,27 @@
 | N1 | R1 + T1 = N0 + A - D | {{N1}} |
 | F | 已确认、修复且 fresh 适用验证通过的独立 issue 数 | {{F}} |
 
-- identity / dedup rule：{{stable IDs; F by root cause; A by scoring case}}
-- rename / move / split / merge rule：{{mapping}}
-- excluded non-cases：helper、fixture、setup、diagnostic、preflight、未注册且不属于正式 manifest/评分契约的实现、禁用项及 {{others}}
-- orphan 口径：正式 manifest/rubric 身份即使未注册/未映射，仍保留在 R0 并登记 issue；不得作为 non-case 排除
+- identity / dedup rule：{{R0 按 quality `[[criterion]]` 条目逐条计，重复/缺失 id 不去重并另报 issue；T0 independently by final registered result ID；factory multi-ID counts IDs；repeat/retry does not}}
+- manifest-not-counted：`criteria_manifest.yaml` 不贡献任何 rubric/criterion/test/check 身份，不进入 R0/T0/N0
+- rename / move / split / merge / format migration rule：{{身份保持的 rename/move/quality case normalization/格式迁移 A=0；mapping}}
+- missing quality creation rule：{{formal claim/current runner requirement；derivation source；不得为空/placeholder/逐目录机械创建}}
+- excluded non-cases：helper、fixture、setup、diagnostic、preflight、manifest rows、未注册且不属于正式评分契约的实现、禁用项及 {{others}}
+- orphan 口径：canonical quality criterion 保留在 R 库存；registered check 保留在 T 库存；分别登记 issue，不要求 quality criterion 映射到 `checks.py`
+- raw-to-final identity mapping：{{raw path/ID → canonical path → final stable identity → inherited/new/deleted/blocked；逐项列出}}
 - 恒等式例外：{{none / explanation}}
 
-## 3. 物理定义、收集与有效映射
+## 3. 物理定义、收集与有效身份
 
 | 层级 | Rubric/Criterion | Test/Check | 总计 | 异常稳定 ID |
 |---|---:|---:|---:|---|
 | 基线物理定义 | {{value}} | {{value}} | {{value}} | {{IDs}} |
 | 基线 collected/registered | {{value}} | {{value}} | {{value}} | {{IDs}} |
-| 基线有效闭合映射 | {{value}} | {{value}} | {{value}} | {{IDs}} |
+| 基线有效稳定身份 | {{value}} | {{value}} | {{value}} | {{IDs}} |
 | 最终物理定义 | {{value}} | {{value}} | {{value}} | {{IDs}} |
 | 最终 collected/registered | {{value}} | {{value}} | {{value}} | {{IDs}} |
-| 最终有效闭合映射 | {{value}} | {{value}} | {{value}} | {{IDs}} |
+| 最终有效稳定身份 | {{value}} | {{value}} | {{value}} | {{IDs}} |
 
-异常：orphan={{IDs}}；ghost={{IDs}}；duplicate identity={{IDs}}；duplicate registration={{IDs}}；unknown registration={{IDs}}；invalid weight/evidence mapping={{IDs}}；helper miscount={{IDs}}。
+异常：orphan={{IDs}}；ghost={{IDs}}；duplicate identity={{IDs}}；duplicate registration={{IDs}}；unknown registration={{IDs}}；invalid dimension/weight/evidence/source mapping={{IDs}}；helper miscount={{IDs}}。
 
 ## 4. Issue 台账
 
@@ -110,7 +130,7 @@
 |---|---|---|---|---|---|---|
 | {{ID}} | {{rubric/criterion/test/check}} | {{add/delete/merge/split/rename/move}} | {{source}} | {{IDs}} | {{yes/no}} | {{run ref}} |
 
-纯改名、移动、描述调整、helper、未注册/未绑定或未验证项不计新增。拆分时最多一个后继项继承原身份；删除必须说明替代项、权威来源和覆盖是否保留。
+纯改名、移动、描述调整、无歧义的 quality 文件名/case 规范化、身份保持格式迁移、manifest 创建/再生成、helper、未注册/未绑定或未验证项不计新增。新 criterion 计 `AR+1`，新 check/result ID 计 `AT+1`；同一新增对为 `A=2`。拆分时每层最多一个后继项继承原身份；删除必须说明替代项、权威来源和覆盖是否保留。
 
 ### 5.2 指标
 
@@ -130,7 +150,7 @@
 每个 run 绑定：
 
 ```text
-grader_digest         = rubric/criterion + test/check + judge helper/prompt
+grader_digest         = legacy: rubrics.py + test_outputs.py；new: applicable canonical quality.toml (or ABSENT_ALLOWED_BY_CLAIM_RUNNER) + applicable loaded checks.py (or ABSENT_ALLOWED_BY_CLAIM_RUNNER) + criteria_manifest/scorer mapping + judge helper/prompt
 runner_digest         = test.sh / runner / reward and aggregation config
 rules_digest          = active claim carriers and versions
 fixture_digest        = input resources and formal mappings
@@ -183,7 +203,8 @@ result_digest         = result artifact
 
 ## 9. 差异、交付审计与最终声明
 
-- missing / changed / unexpected_extra：{{normalized paths}}
+- artifact missing / changed / unexpected_extra：{{按 artifact_path_normalization 输出的 paths}}
+- quality filename normalization diff：{{raw quality paths → canonical `quality.toml`；与 artifact 路径规范化分开}}
 - actual_changed_paths：{{必须满足 ⊆ actual tests/** allowlist ∪ {/qa_report.md}}}
 - tests allowlist 外零变化审计：{{PASS/FAIL；/qa_report.md 为唯一例外}}
 - qa_report 本轮生成/更新时间与状态：{{value}}
