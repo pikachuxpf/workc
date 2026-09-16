@@ -60,26 +60,26 @@ Docs 页面所述形状为：
 
 字段拼写、层级、值类型、枚举和默认值仍以当前任务 schema 与实际 runner 为准；版本化页面、题目内 schema 或 runner 若不同，以当前任务正式契约获胜，不能为了套示例修改真实契约。`files` 与 `atif-trajectory` 必须指向 runner 实际挂载且该 criterion 确实消费的真实 evidence；不存在的示例路径、猜测路径和未挂载载体不得写入正式文件。
 
-以下仅展示字段结构；只有这些值和路径在当前题真实存在且符合当前 schema 时才可采用：
+2026-09-16 核对的格式页（显示 9月10日 13:47 编辑）采用 `mode="batched"`、`type="likert"`、`points=5`、`aggregation="weighted_mean"`。下例仅展示该字段形状，`TASK_APPROVED_MODEL` 是待替换的结构占位，不可作为可执行配置；只有模型获当前任务批准、路径真实挂载且 schema/runner 支持时才可采用。页面固定模型、示例题目路径、canary 与 GT source 不照抄，也不构成 GT 读取授权：
 
 ```toml
 [judge]
-judge = "narrative-quality"
-files = ["workspace/final.md"]
-atif-trajectory = "trajectory/atif.json"
-mode = "point_based"
-timeout = 120
+judge = "TASK_APPROVED_MODEL"
+files = ["/app/project/reviews/final.html"]
+atif-trajectory = "/logs/agent/trajectory.json"
+mode = "batched"
+timeout = 300
 
 [[criterion]]
 name = "Narrative quality"
 id = "output.narrative_quality"
 description = "The final narrative is clear, accurate, and supported by the supplied evidence."
-type = "judge"
-points = 10
+type = "likert"
+points = 5
 weight = 1.0
 
 [scoring]
-aggregation = "weighted_sum"
+aggregation = "weighted_mean"
 ```
 
 每个 `[[criterion]]` 只承担一个可独立计分的质量事实，使用稳定且在其正式命名空间内唯一的 `id`。核对 `points`、`weight` 和 `aggregation` 的实际语义，不能假设 points、criterion weight、dimension weight 或总 reward 占比等价。
@@ -111,13 +111,17 @@ Manifest 同时包含 quality rows 与 deterministic rows。例如：
 criteria:
   - angle_id: output.narrative_quality
     scorer: output/quality.toml::output.narrative_quality
-    score_type: quality
-  - angle_id: delivery_form
+    score_type: likert
+  - angle_id: output.delivery_form
     scorer: output/checks.py::delivery_form
-    score_type: deterministic
+    score_type: float
 ```
 
-实际行还应填写当前 schema 要求且能从源定义投影出的 dimension、weight、evidence、source 等字段。示例中的相对路径必须按当前 manifest 的解析根确认能解析到真实文件和真实 target；不能照抄不存在的路径。
+实际行还应填写当前 schema 要求且能从源定义投影出的 dimension、weight、evidence、source 等字段。上例 quality/deterministic 是行的职责分类，格式页的 `score_type` 示例值实际为 `likert/float`，不能用职责名称冒充枚举；相对路径仍须按当前解析根确认真实 target。
+
+当前判分对齐页还说明 `summary/partial_credit/evidence` 的速览与部分分用途。若当前 schema 包含这些字段，核对部分分各项与 checks 实际算术及总分一致，不套用示例“十分”到其他 points。格式页的 `angle/rule_hint` 与此形态按当前 schema 选择，不盲目并入所有字段。Manifest 用于定位、速览和对照，正式规则、证据消费与权重必须打开对应 checks/quality 和 runner 验证。
+
+对齐页示例要求 tests manifest 与题包根目录副本字节一致；仅当当前正式契约要求双副本时只读核对。根目录副本始终冻结，必须改它才能闭合时登记 `BLOCKED` 并移交，不自行创建或同步 tests 外文件。
 
 完成或返修时要求：
 
@@ -194,6 +198,12 @@ Evidence 声明、冻结动作、实际路径和 scorer 消费行为必须分别
 
 已核实的 RewardKit 0.1.7 程序化目录中，维度内部按 criterion 注册权重归一加权，顶层 `_collapse_rewards()` 使用各子 Reward 的 `reward_weight`，且不读取 `[[reward]].weights`。子 Reward 都采用默认 `reward_weight=1.0` 时，顶层严格等权；各维度 criterion 权重总和只是维度内部归一化分母，不形成跨维度占比。该结论只适用于实际验证过的 0.1.7 路径；升级版本、封装或新版 quality runner 后必须重新验证。
 
+### 7.1 当前新版的 LLM 占比与防伪验证
+
+当前 [判分与人工标注对齐](https://docs.xiaohongshu.com/doc/1a42e805086c3a943b112d67d80201e6) 规定全部 LLM 评分项的最终有效权重占比合计不超过 40%。按当前真实 criterion→group→dimension→reward 聚合链计算；嵌套加权均值时复算每层归一化后乘积再求和，不能只相加 manifest 原始权重或按条目比例。非线性门控、动态分母或未知聚合时报告适用情形与可核实上界，无法证明合规则 `BLOCKED`。不得为满足占比随意删语义 case；所需 reward 配置冻结时移交。
+
+授权且隔离充分时对照关键词空壳、错误数值、关键内容缺失，并在题包外隔离配置移除全部 judge 项做消融。事实错误必须由保留的事实 checks 识别，不能靠 judge 补判。记录相同基线/evidence、单变量变更、受影响评分项、实际分母/归一化、各维度/总分与正式通过判据。没有明确阈值时不自定 0.95 等 cutoff，不把“明显失分”改为猜测的数值门；隔离或证据不足写 `BLOCKED/NOT_RUN`，不得在宿主执行候选替代可信验证。完整流程见 [current-sop.md](current-sop.md)。
+
 ## 8. Case 身份与计数
 
 在任何审查性修改前冻结同一份可靠基线：
@@ -253,6 +263,8 @@ AI 生成或修改的 quality criterion、manifest row、check、expected value�
 13. **运行**：使用项目 runner 和新鲜隔离目录；记录各维度结果、总 reward、返回码、版本和基础设施错误。
 14. **差异审计**：题包内只允许本轮实际授权的 `tests/**` 子集和根目录 `qa_report.md` 变化；不提交缓存、日志、audit、真实 secrets 或候选产物。
 15. **强制报告**：完成、返修或作业交付自检必须生成或更新根目录 `qa_report.md`，记录 test allowlist 外零变化并把报告标为唯一固定例外；缺少报告不得声明作业完成。
+16. **新版占比与对照**：证明全部 LLM 项最终有效占比≤40%；验证空壳、错误数值、缺关键内容和 judge 消融，条件不足记阻塞，不凭参考候选高分认证。
+17. **人员与阶段**：轨迹反馈逐项三段式归因、跨所有提供轨迹比较；独立记录个人多轮复测、人工核查、技术负责人批量复核与算法收口，不代签未发生的环节。
 
 ## 11. 典型分流与计数示例
 

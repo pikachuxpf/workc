@@ -40,7 +40,7 @@ result_artifact_digest
 scope and result summary
 ```
 
-rubric/criterion、test/check、权重、judge prompt、隔离方式、runner 配置或候选产物变化后，相关旧结果过期。定向回归不能声称全量；不同 run 的通过项不能拼接成一次全量通过。为检查模型波动可重复完整运行，但每次保持独立 run_id，并报告稳定性而不是挑选最好结果。
+rubric/criterion、test/check、权重、judge prompt、隔离方式、runner 配置或候选产物变化后，相关旧结果过期。定向回归不能声称全量；不同 run 的通过项不能拼接成一次全量通过。为检查模型波动可重复完整运行，但每次保持独立 run_id，并报告稳定性而不是挑选最好结果。当前主 SOP 要求轨迹返修后个人多跑几遍，再由技术负责人批量复核；它未规定固定轮数，不虚构“三轮即合格”。记录实际轮数、每轮 scope/digest、全部结果与不一致项；修改后的旧轮次不得与新轮次拼成稳定通过。
 
 新鲜度统一为：`FRESH`（当前全部适用输入摘要一致且范围足够）、`STALE`（任一适用输入变化或后续修改影响覆盖）、`UNVERIFIED`（摘要、证据或范围无法确认）。时间较新不自动等于 `FRESH`。
 
@@ -162,3 +162,13 @@ N1 = R1 + T1
 - `external_submission`：实际提交动作与最终状态。
 
 完整包可以读取冻结内容，但交付前必须在本轮生成或更新根目录 `qa_report.md`，且只能生成在题包外或用户明确指定的外部位置；tests 未变化时使用 `mutation=report-only`，不得以 `mutation=none` 或 chat-only 声称完整包已完成。不得在题包内创建 sidecar、staging 或临时包。打包不扩大写权，也不能替代报告。上传文件不等于提交成功。
+
+## 9. 当前 SOP 的流程证据
+
+按 [current-sop.md](current-sop.md) 补充来源日期与适用批次、反馈清单 identity、全部提供轨迹的比较和三段式归因。返修结论写“refine 行为 + 具体操作/不修改依据”，计算错误给出正式参数、公式、正确值与实际输出；冻结题面/环境缺陷只列移交建议，不写成已修改。
+
+报告分别记录 `human_review_status`、`technical_lead_review_status`、`trajectory_stage_status`、`algorithm_acceptance_status`，没有证据记 `NOT_RUN`，不得把代理自检冒充人员验收。当前交付契约要求人工或负责人收口而尚未完成时对应 ready 为 `BLOCKED`，不是因为本地 reward 高就 YES。轨迹阶段“问题数≤5%”只记录来源、分子/分母/范围是否核实和阶段结果，不能替换两项 QA 指标。
+
+新版任务记录 LLM 有效总占比复算（≤40%）、空壳/错误数值/缺内容对照与 judge 消融结果。动态对照需满足 V3/V4 授权和隔离；未运行如实列 `BLOCKED/NOT_RUN`，局部静态探针不证明端到端门闭合。
+
+若授权平台交付，按当前实际 UI 验证上传后的提交步骤；“进行中”不能认证提交。顺带领取下一题须单独包含在授权范围。批次表格登记完成状态和 `50%（1/2）` 形式的指标；未授权写回时报告待登记值及 `NOT_REQUESTED/NOT_AUTHORIZED`，不替供应商或算法写验收状态。

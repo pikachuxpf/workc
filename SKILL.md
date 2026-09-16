@@ -29,6 +29,8 @@ AI 生成或修改的 rubric/criterion、test/check、expected value、judge 结
 
 维护本 Skill 自身时转入 skill-creator 元流程；本文件不授权修改任何题包外仓库。
 
+当前文字 SOP 的版本、阶段职责与已确认差异见 [current-sop.md](references/current-sop.md)（2026-09-16 核对）；进入当前批次作业、轨迹返修或平台交付前按需读取。视频、示例题包与下载的辅助 skill 不自动成为当前规则或已通过证据。人工复核尚未发生时写 `human_review_status=NOT_RUN`，不得将代理自检表述为人工或技术负责人验收。
+
 ## 2. 固定主流程
 
 每道 WorkC 作业都按同一主线推进：
@@ -110,6 +112,8 @@ persona 是被测场景，不自动覆盖政策；tests、solution、旧 QA、�
 - 缺失 evidence 要区分候选缺失、场景不适用、可选载体缺失与 harness/infrastructure 故障；核心缺失不得普通 `return` 通过；
 - WorkC 可以只读业务文件和产物作为 evidence，但绝不修复它们；
 - 修改只发生在实际授权的 `tests/**` 子集；每轮完成、返修或作业交付自检都同步生成或更新根目录 `qa_report.md`。
+- 轨迹返修逐项写清“测试条件、Agent 实际行为、正式规则依据”，比较全部已提供的相关轨迹并按根因归组；候选真错不修改测试，隐藏约束与合理多解按正式依据处理。需要补题面、环境或冻结 harness 的项只登记移交，不扩大写权。
+- 返修记录使用“refine 行为 + 具体操作”，而不是候选解题步骤；个人多轮复测、技术负责人批量复核、项目收口与算法验收分阶段保存证据。代理不能代签人工收口。
 - 对 Seal/RewardKit 先按评分单元盘点 `quality.toml`、`checks.py`、manifest 投影和 runner 注册，再决定修 criterion、修 check、规范化单一文件别名或重建 manifest；不得用 manifest 补行替代真实评分身份。
 
 ## 8. Seal / RewardKit 新格式
@@ -123,6 +127,9 @@ persona 是被测场景，不自动覆盖政策；tests、solution、旧 QA、�
 - `criteria_manifest.yaml` 常见顶层字段为 `version`、`score_range`、`dimensions`、`criteria`；criteria 行常见字段为 `angle_id`、`angle`、`rule_hint`、`dimension`、`weight`、`evidence`、`scorer`、`score_type`、`source`。实际任务 schema 与 runner 仍优先。
 - Manifest 不是身份权威，所有行都增加零个 case。质量行 scorer 形如 `output/quality.toml::output.narrative_quality`；确定性行形如 `output/checks.py::delivery_form`。验证源身份到 manifest 行的 exact-once projection、每行 scorer target 存在且正确，并闭合已加载 check 与运行时结果；不得要求质量 criterion 映射到 `checks.py`。
 - manifest 缺失、陈旧或单独存在时，先依正式 claim 和 runner 判断是应创建/再生成摘要、合法无 quality、缺失 criterion，还是链路未决；不得把 manifest 行反向当作 criterion 真值。
+- 当前格式页示例为 `mode="batched"`、`type="likert"`、`points=5`、`aggregation="weighted_mean"`，但固定模型、文件路径与 canary 不照抄，实际任务 schema/runner 仍优先。
+- 当前新版对齐规范要求全部 LLM 评分项的最终 reward 有效权重占比合计不超过 40%；沿真实聚合链复算，不按文件数或 manifest 权重直接估算。无法确认聚合或必须改冻结配置才合规时 `BLOCKED`。
+- 当前 schema 若有 `summary/partial_credit`，核对其规则、部分分与真实实现一致；正式要求根目录 manifest 与 tests manifest 字节一致时只读比对，根目录不同步的缺陷移交，禁止修改根目录副本。
 
 ## 9. 安全与候选隔离
 
@@ -164,6 +171,8 @@ persona 是被测场景，不自动覆盖政策；tests、solution、旧 QA、�
 
 统一状态：`PASS`、`FAIL`、`PARTIAL`、`BLOCKED`、`NOT_RUN`。Judge 401/402/429/5xx、连接和超时是 infrastructure failure，不直接算候选失败。
 
+当前新版验收还须在授权隔离条件下验证关键词空壳、错误数值、关键内容缺失和去掉全部 judge 的事实检查消融；使用同一基线与一致 evidence，只改变预定变量，记录受影响事实项、分维度/总分和真实通过判据，不擅造“明显失分”的统一阈值。缺隔离则 `BLOCKED/NOT_RUN`，不能宿主降级。多轮复测独立保存 run_id 与所有结果，不挑最好一次；主 SOP 的轨迹“问题数≤5%”只属于项目/算法收口阶段，不等于 `F/N0` 或 reward 门。
+
 ## 12. 强制 QA 报告与交付
 
 完成、返修或作业交付自检 WorkC 作业时，必须用 [qa_report.template.md](assets/qa_report.template.md) 生成或更新题包根目录 `qa_report.md`。报告至少包含：固定最大写入边界、实际 test allowlist、实际 test allowlist 外零变化审计（根目录 `qa_report.md` 为唯一例外）、规则与架构、canonical quality 文件及别名处理结果、`R0/T0/N0` 与 manifest 零计数、case 库存、manifest exact-once projection/scorer target 校验、issue 台账、`F/AR/AT/A` 和两项指标、run freshness、差异、阻塞项与限制。确定性-only 单元须明确其无 `quality.toml` 是否由当前 claim/runner 允许。
@@ -177,6 +186,8 @@ persona 是被测场景，不自动覆盖政策；tests、solution、旧 QA、�
 - `platform_submission_ready`：满足外部提交前提。
 
 完整包可读取冻结文件，但交付前必须在本轮生成或更新根目录 `qa_report.md`，且包只能生成到题包外或用户明确指定的外部位置。tests 未变化时使用 `report-only`；打包不扩大题包写权，也不能替代报告。上传不等于提交成功。
+
+当前星标平台指派题上传后须完成实际提交步骤；显示“进行中”不能写提交成功。领取下一题等连带副作用须在外部动作授权内。批次表格完成状态与两项指标需实时登记，但无写回授权时只提供待登记值。报告补充人工复核、负责人批量复核、轨迹反馈、复测稳定性、LLM 有效占比与消融证据；未执行环节分别列 `NOT_RUN/NOT_REQUESTED`，不得替项目收口方或算法签发验收结论。
 
 ## 13. Secrets 与发布
 

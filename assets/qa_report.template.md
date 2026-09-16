@@ -12,7 +12,9 @@
 | blocking_issue_ids | {{IDs / none}} |
 | report_generated_at | {{ISO-8601 with timezone}} |
 | reviewer/tool_version | {{value}} |
-| template_version | 1.1 |
+| template_version | 1.2 |
+| human_review_status | {{PASS / FAIL / PARTIAL / BLOCKED / NOT_RUN / NOT_APPLICABLE；无人工证据不得写 PASS}} |
+| technical_lead_review_status | {{同上；不将代理自检代签为负责人批量复核}} |
 
 {{用 2–4 句说明完成了什么、未完成什么、不能声称什么。}}
 
@@ -35,6 +37,10 @@
 - prohibited_runtime_dependencies：{{value}}
 - external_action_authorization：{{source/time or none}}
 - rule sources / claim ledger：{{versions, carriers, blocked claims}}
+- current_sop_source / checked_at / displayed_updated_at：{{URL、核对时间、页面显示日期；不自行补年份}}
+- applicable_batch / workflow_stage：{{初次修复 / 轨迹打回返修 / 负责人复核 / 算法验收；适用依据}}
+- designated_auxiliary_skill / version / evidence：{{正式要求的辅助 skill；未运行不得写已通过}}
+- delivery_inventory：{{legacy rubric/test 或新版 manifest、实际 checks、按需 quality，以及根目录 qa_report.md；依当前正式契约，不机械补文件}}
 
 ## 2. 基线与计数口径
 
@@ -61,6 +67,8 @@
 | quality_block_status | {{CLEAR / BLOCKED；原因}} |
 | manifest_path / status | {{tests/criteria_manifest.yaml / present/absent/created/regenerated}} |
 | manifest_sync | {{PASS/FAIL/BLOCKED；omitted/extra/duplicate rows；scorer targets；dimension/weight/evidence/source consistency}} |
+| summary / partial_credit consistency | {{按当前 schema 与真实判据、部分分算术核对；合法缺席填 NOT_APPLICABLE}} |
+| root_manifest_byte_sync | {{正式契约是否要求双副本、只读 byte comparison；根副本冻结，不同步时 BLOCKED/移交}} |
 | manifest_identity_rule | `criteria_manifest.yaml` 仅为 quality 与 deterministic/check 的聚合摘要/索引，不贡献 R/T 身份；创建或再生成 manifest 为 A=0 |
 
 manifest quality row 按 canonical `quality.toml` criterion target 校验；deterministic/check row 按 `checks.py` 注册 result ID target 校验。不得要求 quality criterion 映射到 `checks.py`。
@@ -122,6 +130,17 @@ manifest quality row 按 canonical `quality.toml` criterion target 校验；dete
 - 非 case issue：{{count and IDs}}
 - 去重说明：{{same root cause / independent fixes}}
 
+### 4.1 轨迹反馈逐项归因（无反馈填 NOT_APPLICABLE）
+
+- feedback_source / task identity / digest：{{refine.json 或正式反馈；task_path、always_failing_tests、num_runs_with_ctrf、num_always_failing}}
+- provided_trajectory_refs / inspected / missing：{{列出全部相关 traj_path；不将一条冒充全部}}
+
+| 反馈 test/check ID | 测试条件与评分依据 | Agent 实际行为 / 输出 | 正式规则与计算链 | 跨轨迹比较 / 归因 | refine 行为 + 具体操作 | root_cause / evidence refs |
+|---|---|---|---|---|---|---|
+| {{ID}} | {{判据、evidence}} | {{逐轨迹事实}} | {{参数→公式→正确值；实际值}} | {{候选真错/隐藏约束/多解/环境/实现缺陷}} | {{不修改 test及依据 / 修改 test及操作 / 待讨论 / 建议剔除 / 冻结路径移交，本轮未修改}} | {{IDs/refs}} |
+
+候选真错只解释为什么不修改测试，不写候选修复方案；同根因多个失败项不重复计 F。必须改 instruction/environment/冻结 harness 才能消解的问题列 BLOCKED，不写成已修复。
+
 ## 5. Case 变化与 QA 指标
 
 ### 5.1 新增/删除明细
@@ -168,6 +187,27 @@ result_digest         = result artifact
 
 报告自引用：`artifact_digest` 排除 `qa_report.md` 和允许的运行产物；报告完成后只能在题包外的交付清单或外部包元数据中记录 `report_digest`，不得在题包内创建 sidecar，也不得把完整文件 hash 写回被散列的报告正文。最终差异审计在报告写完后执行。
 
+### 6.1 新版 LLM 有效占比与防伪对照
+
+- applicability / formal source：{{新版对齐规范适用依据；legacy 等不适用则 NOT_APPLICABLE}}
+- llm_effective_reward_share / bound：{{真实聚合层级、归一分母、计算式、最终占比；≤40%核对，未知 BLOCKED}}
+- acceptance_rule / source：{{正式通过判据；未给出统一数值门时不擅造 cutoff}}
+
+| 对照 | 单变量变更 / candidate digest | 一致 evidence / environment refs | 受影响事实项 / 分维度 / reward | 状态 / run_id / freshness |
+|---|---|---|---|---|
+| 关键词空壳 | {{value}} | {{value}} | {{value}} | {{value}} |
+| 错误数值 | {{value}} | {{value}} | {{value}} | {{value}} |
+| 缺关键内容 | {{value}} | {{value}} | {{value}} | {{value}} |
+| 移除所有 judge 的事实检查消融 | {{隔离外部配置；保留事实 checks；实际分母与归一化}} | {{value}} | {{关键事实是否失败；正式通过门}} | {{value}} |
+
+对照未执行如实列 BLOCKED/NOT_RUN。只有局部 parser 探针不能认证完整 runner；不同 evidence 上的分数下降不能归因于单一修复。
+
+### 6.2 多轮复测稳定性
+
+- requested / actual repeat count：{{当前主 SOP 要求多轮但无固定次数；实际记录}}
+- independent_run_ids / scopes / digests：{{每轮独立证据，不能拼接或挑最好结果}}
+- all_results / inconsistent_items / disposition：{{全部结果、波动与处理；修改后旧轮次 STALE}}
+
 ## 7. 状态向量
 
 | 维度 | 状态 | 证据 | 限制/阻塞 |
@@ -199,7 +239,23 @@ result_digest         = result artifact
 - platform artifact digest：{{value}}
 - displayed final status / last_verified_at：{{value}}
 
-“保存”“已上传”或“本地打包完成”均不能写成 `SUBMITTED_CONFIRMED`。
+“保存”“已上传”或“本地打包完成”均不能写成 `SUBMITTED_CONFIRMED`。当前星标指派题需完成上传后的“领取并提交下一题”步骤；连带领取须在授权内，显示“进行中”表示尚未提交成功。
+
+### 8.1 人工、供应商与算法收口
+
+| 环节 | 状态 | 复核人/授权来源 | artifact digest / evidence refs | 未完成原因 |
+|---|---|---|---|---|
+| 人工逐项核查 + 修复确认 | {{value}} | {{value}} | {{value}} | {{value}} |
+| 技术负责人批量复核 | {{value}} | {{value}} | {{value}} | {{value}} |
+| 项目收口方首轮轨迹评估 | {{value}} | {{value}} | {{value}} | {{标注作业不默认启动此环节}} |
+| 轨迹打回返修后移交 | {{value}} | {{value}} | {{value}} | {{不把未重跑轨迹表述为本地认证}} |
+| 算法验收 | {{value}} | {{value}} | {{value}} | {{value}} |
+
+- trajectory_5_percent_rule：{{仅首轮轨迹阶段；来源、真实分子/分母/范围、是否核实与结论；不等于 F/N0 或 reward}}
+- batch_table / task_row / authorization：{{value}}
+- batch_table_completion / error_rate / miss_rate / writeback_status：{{实际登记值与证据；未授权仅列待登记值，NOT_REQUESTED/NOT_AUTHORIZED}}
+
+无人工证据不得写人工 PASS；当前正式交付门要求人工或负责人收口且未完成时 ready 为 BLOCKED，不能由代理代签。
 
 ## 9. 差异、交付审计与最终声明
 
