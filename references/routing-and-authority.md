@@ -2,7 +2,7 @@
 
 ## 1. WorkC 的唯一职责
 
-WorkC 只处理 WorkC、ClawEval、PinchBench、Seal 单题的测试侧完成、返修、作业验证、QA 报告和交付。它不完成页面、服务、业务脚本、业务数据、业务报告、业务归档或 API 状态，也不是普通项目的通用质检 Skill。
+WorkC 只处理 WorkC、ClawEval、PinchBench、Seal 或 RewardKit 单题的测试侧完成、返修、作业验证、QA 报告和交付。它不完成页面、服务、业务脚本、业务数据、业务报告、业务归档或 API 状态，也不是普通项目的通用质检 Skill。
 
 题包内最大可写集合不可解除：
 
@@ -36,7 +36,7 @@ tests/**
 | mutation | none / tests-allowlist-plus-report / report-only | 题包内允许哪些写入 |
 | execution-ceiling | V0–V5 | 最多可执行到哪一层 |
 | delivery | chat-only / completed-assignment / full-package / platform-submit | 交付什么 |
-| architecture | legacy / seal-rewardkit / hybrid / unresolved | 按哪条评分链工作 |
+| architecture | legacy / seal-rewardkit-0917 / hybrid / unresolved | 按哪条评分链工作 |
 
 状态之间不能互相产生权限。打包、运行或交付不会把 tests 外路径变为可写。
 
@@ -58,19 +58,27 @@ tests/**
 ## 5. 架构与新格式路由
 
 - `legacy`：保留 `rubrics.py` + `test_outputs.py` 输入架构。只有当前任务正式使用或明确要求新格式时才规范化或迁移，不做普遍迁移。
-- `seal-rewardkit`：`tests/**/quality.toml` 定义语义/judge 质量 criterion，`tests/**/checks.py` 定义确定性/程序化 check，`tests/criteria_manifest.yaml` 聚合并摘要当前实际存在的两类评分项。按正式 claim 与 runner，支持 quality-only、`quality.toml + checks.py`，也支持确定性-only `checks.py + manifest`。
-- `manifest-only`：不能建立任何评分身份；先查正式 claim 与当前 runner，区分陈旧摘要、缺件与未决链路。
-- `hybrid/unresolved`：architecture 值仍可为 `legacy` / `seal-rewardkit` / `hybrid` / `unresolved`；追当前 runner 的实际 import、registry、scorer target、结果与聚合链，不猜主架构。
+- `seal-rewardkit-0917`：0917 新格式必须有 `tests/criteria_manifest.yaml` 和 `tests/process`、`tests/output`、`tests/safety` 三个维度，规范化后每维恰好一个 `checks.py`。只有 `tests/process/quality.toml` 与 `tests/process/reward.toml` 可选；deterministic-only 仍须三个 checks，但可无 quality/reward/prompt。
+- `manifest-only`：新格式必要结构不完整，也不能建立任何评分身份；先查正式 claim 与当前 runner，区分陈旧摘要、缺件与未决链路。
+- `hybrid`：legacy 与 0917 新格式评分链同时被实际加载时，分别追 import、registry、scorer target、结果与聚合链；不任选一套。
+- `unresolved`：必要结构缺件、manifest-only 或加载链无法确认时使用；`manifest-only` 是结构观测结果，不是第五种 architecture。不得猜主架构，也不强迫有效 legacy 迁移。
 
-严格使用小写文件名 `quality.toml`。仅在可写完成/返修模式、且文件位于实际 tests allowlist 内时，自动把一个语义明确的替代 TOML 质量文件名或大小写变体规范化为 `quality.toml`。目标已存在或多个别名冲突时，不覆盖、不合并，标记 `BLOCKED`；咨询模式只报告。
+可选 quality 只允许精确路径 `tests/process/quality.toml`。它存在时同目录必须恰好一个 `react_prompt.md`，并使用 `judge="react"`、`prompt_template="react_prompt.md"`。quality/prompt 缺失、重复、别名/大小写变体、归属歧义或模板不一致时，整条数据项先标 `DEPRECATED/ABANDONED`；不得自动创建、猜写、改名、拼接或合并 prompt。prompt 只承载正式已有提示，不新增 persona/身份、评分权重或隐含要求。
 
-缺失 `quality.toml` 仅可在正式当前 claim 或 runner 要求该评分单元承载语义/judge criterion、且可从权威来源推导内容时创建。不得创建空文件或占位文件，也不得要求每个 dimension/check 目录都有它；只有确定性 `checks.py` 而无 `quality.toml` 合法。
+Manifest 常见顶层字段为 `version`、`score_range`、`dimensions`、`criteria`；criteria 行常见字段为 `angle_id`、`angle`、`rule_hint`、`dimension`、`weight`、`evidence`、`scorer`、`score_type`、`source`。实际任务 schema 与 runner 优先。Manifest 不是身份权威，每行增加零个 case。验证源身份到 manifest 行的 exact-once projection、scorer target 存在且正确及 dimension/weight/evidence/source 一致性，并闭合三维已加载 check 与运行时结果；不得要求质量 criterion 映射到 `checks.py`。
 
-常见文档 schema 为 `[judge]` 的 `judge`、`files`、`atif-trajectory`、`mode`、`timeout`，重复 `[[criterion]]` 的 `name`、`id`、`description`、`type`、`points`、`weight`，以及 `[scoring]` 的 `aggregation`。实际任务 schema 与 runner 优先；`atif-trajectory` 须为有效 TOML 键，不包含 canary 注释。
+计数沿用历史公式：0917 `R0` 按冻结基线 canonical `tests/process/quality.toml` 中每个可解析 `[[criterion]]` 条目计，一条 criterion 是一个 rubric case；重复或缺失 `id` 的条目仍分别计数并另报 issue，不先按 ID 去重。physical、active、discarded 与 runtime-consumed 库存必须分开报告，discarded 条目不得冒充 active/runtime 身份。`T0` 按 `checks.py` 实现/注册的每个独立实际评分 check 计；`N0=R0+T0`，manifest 行、prompt 和只存在于 assertion message 的 rubric 名称均增加零个 case。`AR/AT` 独立，`A=AR+AT`；错误率为 `F/N0`，漏召率为 `A/(N0+A)`。quality–prompt 配对门失败、整条数据项已弃用或冻结基线无法可靠建立时，两项比率均写 `N/A`。缺一个质量 criterion 再缺一个 check 通常 `A=2`；manifest 创建/再生成和身份不变的迁移为 `A=0`。
 
-Manifest 常见顶层字段为 `version`、`score_range`、`dimensions`、`criteria`；criteria 行常见字段为 `angle_id`、`angle`、`rule_hint`、`dimension`、`weight`、`evidence`、`scorer`、`score_type`、`source`。实际任务 schema 与 runner 优先。Manifest 不是身份权威，每行增加零个 case。质量 scorer 形如 `output/quality.toml::output.narrative_quality`，确定性 scorer 形如 `output/checks.py::delivery_form`。验证源身份到 manifest 行的 exact-once projection、scorer target 存在且正确及 dimension/weight/evidence/source 一致性，并闭合已加载 check 与运行时结果；不得要求质量 criterion 映射到 `checks.py`。
+### 5.1 0818 防回归路由
 
-计数沿用历史公式：`R0` 按 canonical `quality.toml` 中每个可解析 `[[criterion]]` 条目计，一条 criterion 是一个 rubric case；重复或缺失 `id` 的条目仍分别计数并另报 issue，不先按 ID 去重。`T0` 按 `checks.py` 实现/注册的每个独立实际评分 check 计；`N0=R0+T0`，manifest 行增加零个 case。`AR/AT` 独立，`A=AR+AT`；错误率为 `F/N0`，漏召率为 `A/(N0+A)`。缺一个质量 criterion 再缺一个 check 通常 `A=2`；文件名规范化、manifest 创建/再生成、身份不变的格式迁移均为 `A=0`。
+- bootstrap/环境就绪问题不占任务问题上限；已有权威答案时不强制 ask-first 或重复提问。
+- persona 是 evidence，不是 actor 覆盖层；按真实消息/工具 actor 归属绑定，不把用户、工具或第三方行为错绑给候选。
+- HTML 判定读取可见语义、结构与可访问文本，不用固定字符切片、CSS 或 JavaScript 源码替代内容判定。
+- 未披露或不可用服务、缺失凭据、harness noise 与 infrastructure failure 不构成候选硬失败；建议研究不升级为强制研究。只有健康环境中候选按正式要求应交付却缺失才 `FAIL`。
+
+### 5.2 Post-trajectory 环境缺失
+
+轨迹后才确认环境缺失时，在 `qa_report.md` 逐行记录发现阶段、`observed_at`、环境原因、单个 `exact_normalized_missing_path`、预期来源/挂载和 evidence；每个精确规范化缺失路径独占一行，禁止目录概述、glob 或合并多个路径。状态为 `BLOCKED/OUT_OF_SCOPE`，并写 `repair_disposition=NO_FURTHER_REPAIR_REQUIRED_ENVIRONMENT_HANDOFF`。记录完整后该项无需其他测试侧修复，移交环境/授权负责人；不得创建资源、猜凭据或把环境故障写成候选失败。
 
 ## 6. Claim 来源账本
 
@@ -112,6 +120,6 @@ Manifest 常见顶层字段为 `version`、`score_range`、`dimensions`、`crite
 
 ## 9. 触发边界
 
-应触发：明确 WorkC/ClawEval/PinchBench/Seal 单题，并要求测试侧完成、返修、作业验证、运行、强制 QA 报告或交付。
+应触发：明确 WorkC/ClawEval/PinchBench/Seal/RewardKit 单题，并要求测试侧完成、返修、作业验证、运行、强制 QA 报告或交付。
 
 不应触发：业务实现、普通 pytest 修复、泛指 judge、学校考试题、一般 ZIP、普通 QA 报告或非题包前端开发。即使业务目录中存在 `tests/`，只要请求目标是页面、服务或业务产物，也不使用 WorkC 完成它。

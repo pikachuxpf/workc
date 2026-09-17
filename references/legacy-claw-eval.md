@@ -2,7 +2,7 @@
 
 本参考只用于 WorkC 作业的测试侧完成、返修和作业验证，覆盖正式评分架构仍以 `rubrics.py + test_outputs.py` 为主的旧式题。该架构继续有效，不要求普遍迁移。题包内可修改内容不得超出实际授权的 `tests/**` 子集；完成、返修或作业交付自检必须同步生成或更新根目录 `qa_report.md`。除根目录 `qa_report.md` 这个固定例外外，所有 tests 外业务文件、environment、solution、task/materialization 和根目录脚本均冻结，只可作为 evidence 读取。不同批次可能是多轮对话/工具调用型，也可能是输出文件型；以本题材料和 runner 为准。
 
-纯咨询或明确不修改时只做 V0/chat-only：不修改、不运行、不生成报告或打包，并明确本轮未完成作业。完整包交付前必须在本轮更新 `qa_report.md`；tests 未变化时使用 `report-only`，包只能写到题包外或用户明确指定的外部位置。文件名只作候选架构信号；两套结构并存或加载链不完整时标记 `hybrid/unresolved`，沿 runner 确认真实入口，不得把 legacy 机械迁移成 Seal。只有当前任务的正式格式、schema 和实际 runner 已明确采用新版 Seal/RewardKit 模型时，旧式 `rubrics.py`、`test_outputs.py` 或不同名称的 TOML 才是迁移/规范化输入，而不再是并列身份源；此时转用 [seal-rewardkit.md](seal-rewardkit.md) 的 `quality.toml + checks.py + criteria_manifest.yaml` 规则。
+纯咨询或明确不修改时只做 V0/chat-only：不修改、不运行、不生成报告或打包，并明确本轮未完成作业。完整包交付前必须在本轮更新 `qa_report.md`；tests 未变化时使用 `report-only`，包只能写到题包外或用户明确指定的外部位置。文件名只作候选架构信号；两套结构同时被实际加载时标记 `hybrid`，加载链不完整或无法确认时标记 `unresolved`，沿 runner 确认真实入口，不得把 legacy 机械迁移成 Seal。有效 legacy 继续按本文件验收，不强迫迁移。只有当前任务的正式格式、schema 和实际 runner 已明确采用 0917 新版 Seal/RewardKit 模型时，旧式 `rubrics.py`、`test_outputs.py` 才是迁移输入，而不再是并列身份源；此时转用 [seal-rewardkit.md](seal-rewardkit.md) 的必要 `tests/criteria_manifest.yaml`、process/output/safety 三维唯一 `checks.py`，以及可选的 process quality/react prompt 与 reward 规则。
 
 ## 1. 固定主流程
 
@@ -12,8 +12,8 @@
 
 常见材料包括 instruction、persona、fixtures/resources、grader、rubrics、tests、judge 和 test.sh。
 
-- 多轮对话型：grader 可能提供 MUST_ASK、澄清质量、最终答案和批次安全规则；instruction 是首轮用户请求；persona 是后续披露、模糊回答、错误说法和格式约束。
-- 输出文件型：从 instruction 与原始 resources 独立推导输出路径、schema、字段、数值、排序、去重、冲突和 CSV 规则。
+- 多轮对话型：grader 可能提供 MUST_ASK、澄清质量、最终答案和批次安全规则；instruction 是首轮用户请求；persona 是后续披露、模糊回答、错误说法和格式约束。0818 防回归要求 bootstrap/环境就绪问题不占任务问题上限；正式 evidence 已有答案时不强制 ask-first 或重复追问。persona 只描述输入场景，按消息/工具真实 actor 绑定，不能把用户、工具或第三方行为错绑给候选。
+- 输出文件型：从 instruction 与原始 resources 独立推导输出路径、schema、字段、数值、排序、去重、冲突和 CSV 规则。HTML judge/test 应读取渲染后的可见语义、结构与可访问文本，不以固定字符切片、CSS 类名或 JavaScript 源码代替内容判定。
 - grader 的默认权威角色可能被批次专用正式规则覆盖；先查版本和适用范围。
 - 输出型 PinchBench 完全忽略 `ground_truth.json`：不读取、不引用、不用于人工交叉验证或运行时测试；`ground_truth.json` 默认禁读（SKILL.md 第 5 节硬性要求），ClawEval 期望值一律先从 instruction 与原始 resources 独立推导，是否允许独立推导后人工交叉检查，必须由当前 grader/批次规则明确授权，并在 QA 报告记录授权来源。solution 和预计算字段不能成为运行时依赖，也不能覆盖独立推导。
 
@@ -28,7 +28,9 @@
 - 与一个评分 test 一一对应；
 - 简洁、正向、可验证；先识别当前批次 profile，不使用跨批次统一上限。已知 ClawEval 旧式 profile 常用不超过 300 字符（按最终字符串计，包含空白与标点）；TB2 标注 profile 使用不超过 400 字符且不超过 3 句。题目级正式规则可在其范围内覆盖，无法确认 profile 时阻断长度合规结论而不猜测；
 - 不内含冗余 PASS/FAIL 说明，不引用其他 rubric 变量，不堆关键词示例；
-- 同一错误说法的即时纠正和后续一致性若是同一事实，应合并而非重复计权。
+- 同一错误说法的即时纠正和后续一致性若是同一事实，应合并而非重复计权；
+- “建议研究/可考虑研究”保持建议性质，除非权威来源明确升级，不得改写为强制研究；
+- 仅出现在 assertion message、异常文本或注释中的 rubric 名称不是独立评分身份，不计入基线、映射或问题数。
 
 有条件触发的对话 rubric 必须写清未触发时如何处理，并让 test 提供用户侧 evidence。不要给纯工具或纯文件题机械添加对话 rubric。
 
@@ -36,7 +38,7 @@
 
 按材料存在性选择，不是固定配额：
 
-- 澄清覆盖：已知参数只确认，不重复追问；缺失/模糊参数再问；
+- 澄清覆盖：正式 evidence 已给出的参数可直接使用，不得强制先确认或重复追问；只有缺失、冲突或模糊且影响结果的参数才询问；
 - 深入追问：题目真正要求的领域考量；
 - 工具调用：列表、详情、条件调用、关键参数、次数、禁止调用；
 - 跨服务推理：实体关联与因果链；
@@ -64,11 +66,13 @@
 
 ## 5. 缺失证据
 
-- instruction 要求的核心文件、字段、回答或调用缺失：FAIL；
+- 健康环境中 instruction 明确要求由候选交付的核心文件、字段、回答或调用缺失：FAIL；
 - 场景未触发：skip/不适用或题目定义的自动通过；
 - 明确可选 conversation/服务未提供：按 runner 规则 excluded/skip；
-- runner 未挂载必需日志、judge 故障、harness 配错：BLOCKED/infrastructure；
+- 未披露或不可用的服务、环境缺凭据、runner 未挂载必需日志、judge 故障、harness noise/配错：BLOCKED/infrastructure，不算候选失败；
 - 普通 `if missing: return` 会产生假通过，不用于核心输出。
+
+Post-trajectory 才发现环境缺失时，在 `qa_report.md` 对该项逐行记录发现阶段、`observed_at`、环境原因、单个 `exact_normalized_missing_path`、预期来源/挂载和 evidence；每个精确规范化缺失路径独占一行，禁止目录概述、glob 或合并多个路径。状态写 `BLOCKED/OUT_OF_SCOPE`，并写 `repair_disposition=NO_FURTHER_REPAIR_REQUIRED_ENVIRONMENT_HANDOFF`。记录完成后该项无需其他测试侧修复，移交环境/授权负责人；不得猜凭据、补环境文件或将其折算为候选 FAIL。
 
 ## 6. 输出型 PinchBench
 

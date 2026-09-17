@@ -1,14 +1,15 @@
 # 当前文字 SOP 对齐与供应商交付流程
 
-本参考是 WorkC Skill 维护中的流程摘要，不是内部 SOP 原文镜像。核对日期：2026-09-16。题包作业仍只可修改实际授权的 `tests/**` 子集与根目录 `/qa_report.md`；本参考不授权业务实现、冻结路径修改或外部提交。
+本参考是 WorkC Skill 维护中的流程摘要，不是内部 SOP 原文镜像。核对日期：2026-09-17。题包作业仍只可修改实际授权的 `tests/**` 子集与根目录 `/qa_report.md`；本参考不授权业务实现、冻结路径修改或外部提交。
 
 ## 1. 来源与适用范围
 
 | 文字来源 | 页面显示更新时间 | 用途 |
 |---|---|---|
+| [0818批次-0917验收](https://docs.xiaohongshu.com/doc/408980eb53309f87bd4c4b1e01777fa7) | 本轮已核对 | 0917 新格式必要结构、0818 防回归、post-trajectory 环境移交 |
 | [Work项目-作业SOP](https://docs.xiaohongshu.com/doc/e9c39a5c3309db4149d4cd46e5ca6f30) | 9月14日 16:44 | 当前主流程、人员收口、平台提交、指标登记 |
-| [RewardKit 判分与人工标注对齐](https://docs.xiaohongshu.com/doc/1a42e805086c3a943b112d67d80201e6) | 9月10日 14:44 | 新版交付结构、事实/judge 分工、40%上限、防空壳验证 |
-| [quality.toml内容格式](https://docs.xiaohongshu.com/doc/d0a8d61b948587efc66d25521e3392a2) | 9月10日 13:47 | quality 与 manifest 字段示例、缺失 quality 的判断 |
+| [RewardKit 判分与人工标注对齐](https://docs.xiaohongshu.com/doc/1a42e805086c3a943b112d67d80201e6) | 9月10日 14:44；已读 | 新版交付结构、事实/judge 分工、40%上限、防空壳验证 |
+| [quality.toml内容格式](https://docs.xiaohongshu.com/doc/d0a8d61b948587efc66d25521e3392a2) | 9月10日 13:47；已读 | quality、prompt 与 manifest 结构核对 |
 | [Openclaw 题目 Refine SOP](https://docs.xiaohongshu.com/doc/1b8a26c2e1115ae58c4e74be8fa23464) | 7月7日 14:57 | 失败清单、跨轨迹归因、返修描述 |
 | [ClawEval质检标准](https://docs.xiaohongshu.com/doc/87e590f1ae4512468d08bba78e9f9c73) | 5月20日 19:46 | legacy 原子性、覆盖与 evidence 分工 |
 
@@ -40,14 +41,29 @@
 
 报告中的修改情况使用“refine 行为 + 具体操作”：`不修改 test：规则明确且轨迹违反要求`、`修改 test：将原条件改为有依据的等价判定`、`待讨论`、`建议剔除`、`建议授权方修改 instruction/environment（本轮未修改）`。候选真错时只解释不修改测试的依据，不编写候选修复方案。删除或替换无触发/不稳定项须确认正式适用性并记录身份与覆盖变更，不能为了减少问题数删有效 case。
 
-## 4. 新版评分的新增验收要求
+## 4. 0917 新版评分验收要求
 
+- 必要结构是 `tests/criteria_manifest.yaml` 及 `tests/process/`、`tests/output/`、`tests/safety/` 三个维度；规范化后每维必须恰好一个 `checks.py`。deterministic-only 仍须三个 checks 文件，但可无 quality、reward、prompt。有效 legacy 保留原契约，不强迫迁移。
+- 只有 `tests/process/quality.toml` 与 `tests/process/reward.toml` 可选。quality 存在时，同目录必须恰好一个精确命名的 `react_prompt.md`，quality 使用 `judge="react"` 与 `prompt_template="react_prompt.md"`。
+- quality/prompt 缺失、重复、别名/大小写变体、归属歧义或模板绑定不一致时，整条数据项先标记 `DEPRECATED/ABANDONED`。禁止自动创建、猜写、改名、拼接或合并 prompt；prompt 不新增 persona/身份、权重或隐含要求。
 - 全部 LLM judge 项合计最终 reward 权重占比不得超过 **40%**。沿当前实际 runner 从 criterion 到组、维度和总 reward 复算，不能按文件数、criterion 数或 manifest 原始 weight 相加估算。无法确认聚合时 `BLOCKED`；调整所需配置位于冻结路径时移交。该上限适用于当前新版对齐规范，不无条件推广到 legacy 或其他正式批次。
 - 对照至少包含关键词空壳、错误数值、关键内容缺失；可复用当前题真实产物作单变量变体。记录被影响 checks、分维度和总分，而不只证明参考候选高分。主规范未给出“明显失分”的数值阈值，不擅造统一 cutoff；至少受影响事实项必须正确失分，交付门仍按正式契约。
 - 做 **judge 消融**：在题包外隔离验证配置中移除所有 judge 项，保留事实 checks，验证事实错误不能被认证通过。记录消融后的实际分母、是否重新归一及正式通过判据；没有数值通过阈值时记录关键事实失败，不虚构总分门。
 - 所有对照使用一致的适用 evidence、候选基线与环境；只改变预定变量。不能污染 trajectory 后将分数下降归因于输出判据修复。隔离或可信 evidence 不足时记 `BLOCKED/NOT_RUN`，不在宿主运行候选来补分数。
 - Manifest 的 `summary` 与 `partial_credit` 若为当前 schema 字段，逐项核对与真实检查及部分分算法一致；manifest 仅用于定位、速览、对照，真正规则与权重必须读取对应 checks/quality 和 runner。格式参考中的 `angle/rule_hint` 形态与对齐页中的 `summary/partial_credit` 形态是不同示例，按当前 schema 判定，不盲目合并字段。
 - 若当前正式契约要求 tests manifest 与根目录 manifest 字节一致，先只读比对。根目录副本始终冻结；需要同步根目录才能闭合时标记 `BLOCKED` 并移交，不能扩大写权，也不为所有题新建根目录副本。
+
+### 4.1 0818 防回归清单
+
+- bootstrap/环境准备问题不占任务问题上限；已有权威答案不强制 ask-first 或重复追问。
+- persona 与 trajectory 按消息、工具和字段的真实 actor 绑定，不能将用户、工具或第三方行为错绑给候选。
+- HTML judge/check 取渲染后的可见语义、结构和可访问文本，不采用固定字符切片、CSS 类名或 JavaScript 源码作为内容捷径。
+- 未披露或不可用服务、缺失凭据、harness noise 与 infrastructure failure 不算候选失败；“建议研究”不升级成强制研究。
+- 只写在 assertion message、异常文本或注释里的 rubric 名称不产生评分身份，不进入 `R0/T0/N0`、manifest 或任务问题数。
+
+### 4.2 Post-trajectory 环境移交
+
+若轨迹后才发现环境缺失，对受影响项在 `qa_report.md` 逐行记录发现阶段、`observed_at`、环境原因、单个 `exact_normalized_missing_path`、预期来源/挂载和 evidence；每个精确规范化缺失路径独占一行，禁止目录概述、glob 或合并多个路径。状态为 `BLOCKED/OUT_OF_SCOPE`，并写 `repair_disposition=NO_FURTHER_REPAIR_REQUIRED_ENVIRONMENT_HANDOFF`。记录完整后该项无需其他测试侧修复，交环境/授权负责人处理。不得自动创建缺失资源、猜凭据或把环境问题折算为候选失败；仅在健康环境中、候选按正式要求应交付却仍缺失时记 `FAIL`。
 
 ## 5. 平台与表格登记
 
@@ -61,8 +77,8 @@
 
 ## 6. 本次维护的差异结论
 
-已一致：tests-only 与强制 QA 交付、人工核查原则、quality 小写命名、缺失 quality 按需创建、事实与语义分工、manifest 不重复计数、两项公式与展示格式。
+已一致：tests-only 与强制 QA 交付、人工核查原则、事实与语义分工、manifest 不重复计数、两项公式与展示格式。0917 新格式下 quality 是仅限 process 的可选配置；其 prompt 配对不允许自动创建或修补。
 
-本次新增/强化：来源版本记录、角色和阶段分离、反馈项三段式归因、多轨迹对照、多轮复测稳定性台账、40%有效占比、伪造产物与 judge 消融、summary/partial_credit 和根 manifest 同步规则、平台确实提交与批次表格登记证据。
+本次新增/强化：0917 必要 manifest 与三维唯一 checks、可选 process quality/react prompt/reward 合同、整项 `DEPRECATED/ABANDONED` 处置、0818 防回归、post-trajectory 环境移交、来源版本记录、角色和阶段分离、反馈项三段式归因、多轨迹对照、多轮复测稳定性台账、40%有效占比、伪造产物与 judge 消融、summary/partial_credit 和根 manifest 同步规则、平台确实提交与批次表格登记证据。
 
-保留的安全差异：只按正式 claim/runner 迁移；不机械补每个目录的 quality/checks；不复制固定模型/路径/canary/GT 引用；instruction、environment、scripts 与其他冻结路径问题仅报告移交。当前 SOP 中更宽的题包建议不解除 WorkC 固定边界。
+保留的安全差异：只按正式 claim/runner 识别架构；保留有效 legacy，不强制迁移；不自动创建、猜写、改名、拼接或合并 prompt；不复制内部原文、固定身份文本、权重、模型/路径/canary/GT 引用或秘密值；instruction、environment、scripts 与其他冻结路径问题仅报告移交。当前 SOP 中更宽的题包建议不解除 WorkC 固定边界，既有错误率和漏召率公式不变。
