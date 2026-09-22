@@ -308,6 +308,13 @@ canonical 期望为唯一 `tests/criteria_manifest.yaml`；`tests/process`、`te
 | 正式 runner 配置足以闭合静态 owner/writeability 契约，但实际 mount provenance 与 candidate run 未授权/未跑 | C2 可 PASS；C1–C4 及其他静态交付门均 PASS 时可声明 tests-side handoff，`evaluation_certified=NO/BLOCKED` |
 | 静态 owner/writeability 契约本身无法建立 | P1/P2/C2 `BLOCKED`；handoff 与 evaluation 均不可认证 |
 | `.pipeline` 字符串引用出现在 tests/report | 在可写范围删除引用并重跑；冻结残留只记录路径，不读取或转述其内容 |
+| Dockerfile 写 `harbor-rewardkit==0.2.0`（精确 pin） | 版本契约 PASS；run 记录实际解析版本 |
+| Dockerfile 写 `0.2.*`/`>=0.2.0`/裸包名 | version-drift issue；Dockerfile 冻结则 `OUT_OF_SCOPE/BLOCKED` 移交，不顺手改 |
+| `test.sh` 版本断言用 `startswith("0.2.")` 前缀匹配 | FAIL：0.2.1 会静默通过；改为精确 `== "0.2.0"` |
+| 本地验证环境是 0.2.1（或其他版本）而非 0.2.0 | 相关结果 `UNVERIFIED`；对齐 0.2.0 后重跑，或 `BLOCKED`，不写 PASS |
+| 0.2.0 环境下准则数量/权重与预期不符 | 先核对题包与验证环境精确版本是否都为 0.2.0，再查装饰器与 `rk.` 调用成对状态；版本不一致本身是候选根因 |
+| 无法安装或确认 0.2.0 | infrastructure `BLOCKED`；不用"版本相近"替代，不以别的版本结果冒充 |
+| 后续批次正式指令改为其他版本 | 以当批指令更新 7.0 节；精确 pin/同版本验证/逐 run 标注方法不变 |
 
 ## 16. 代表性行为试跑 prompts
 
@@ -327,7 +334,7 @@ canonical 期望为唯一 `tests/criteria_manifest.yaml`；`tests/process`、`te
 
 4. **V1 局部通过与 schema 漂移**
 
-   > 这个 0917 题的 Python compile、manifest parser 和两个 self-test 分别通过，但没有单一 V1 入口；`reward.toml` 多了未知顶层字段，现有检查只 grep 聚合字符串。完成 tests-side 返修与交付自检：建立或识别 canonical V1 hard gate，用当前 schema 解析 YAML/TOML，加入单变量 drift controls，并在报告中区分 C1 与尚未授权的 V2+ certification。不得机械要求可选 quality/reward 存在，也不得固定 RewardKit 版本。
+   > 这个 0917 题的 Python compile、manifest parser 和两个 self-test 分别通过，但没有单一 V1 入口；`reward.toml` 多了未知顶层字段，现有检查只 grep 聚合字符串。完成 tests-side 返修与交付自检：建立或识别 canonical V1 hard gate，用当前 schema 解析 YAML/TOML，加入单变量 drift controls，并在报告中区分 C1 与尚未授权的 V2+ certification。不得机械要求可选 quality/reward 存在；RewardKit 版本按当批正式指令精确核对（当前批次 harbor-rewardkit==0.2.0）。
 
 5. **独立复算触发闭环重启**
 

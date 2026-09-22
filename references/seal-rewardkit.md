@@ -185,6 +185,16 @@ Evidence 声明、冻结动作、实际路径和 scorer 消费行为必须分别
 
 没有 runner 明确实现时，不得自行声称 safety gate、默认等权、manifest weight 是最终占比，或 quality/check 同名即自动合并。记录实际 Python、Seal/RewardKit 版本和配置来源；依赖须精确锁定，安装失败不可被 `|| true` 等吞掉，构建期验证导入和版本。
 
+### 7.0 RewardKit 版本固定：harbor-rewardkit==0.2.0（批次指令，常驻）
+
+当前批次正式指令：实际执行评分的容器环境运行 `harbor-rewardkit==0.2.0`，题包必须统一适配并固定到该精确版本。0.2.0 与 0.2.1 对"装饰器自动注册后再显式 `rk.<name>(...)` 注册"的处理存在差异——同一写法在两个版本下可能产生**不同的准则数量与实际评分权重**。
+
+- **精确 pin**：Dockerfile/依赖声明必须写 `harbor-rewardkit==0.2.0`；`0.2.*`、`>=0.2.0`、`~0.2.0`、裸 `harbor-rewardkit` 都视为**未固定**。发现前缀/范围写法时登记 version-drift issue；Dockerfile 属冻结路径，只能记 `OUT_OF_SCOPE/BLOCKED` 并移交，不得顺手修改。
+- **本地验证同版本**：任何 V1+ 验证、C1 canonical 入口、Oracle/nop 对照都必须在与评分容器相同的 `0.2.0` 上执行；本地是其他版本（含 0.2.1）时，相关结果 `UNVERIFIED`，不得写成 PASS。无法安装或确认 0.2.0 时按 infrastructure `BLOCKED`，不用"版本相近"替代。
+- **逐 run 标注**：每个 run 记录实际解析到的 harbor-rewardkit 精确版本（`importlib.metadata.version("harbor-rewardkit")` 或 runner 等价输出），写入 run digest 块；`test.sh` 内的版本断言应精确比较 `== "0.2.0"`，不得放宽为前缀匹配 `startswith("0.2.")`——前缀断言会让 0.2.1 静默通过，正是这条规则要拦截的差异。
+- **返修注意**：返修"准则数量不符/权重与预期不符"类反馈时，先核对题包与验证环境的 harbor-rewardkit 精确版本是否都是 0.2.0，再查注册写法（装饰器 + 底部 `rk.` 调用的成对状态）；版本不一致本身就是一个候选根因，不先对齐版本就改注册写法是误修。
+- **边界**：0.2.0 是本批次正式指令，不是 Skill 自创的全局假设；后续批次版本变化时，以当批正式指令为准更新此节，验证方法（精确 pin、同版本验证、逐 run 标注）保持不变。
+
 已核实的 RewardKit 0.1.7 程序化目录中，维度内部按 criterion 注册权重归一加权，顶层 `_collapse_rewards()` 使用各子 Reward 的 `reward_weight`，且不读取 `[[reward]].weights`。子 Reward 都采用默认 `reward_weight=1.0` 时，顶层严格等权；各维度 criterion 权重总和只是维度内部归一化分母，不形成跨维度占比。该结论只适用于实际验证过的 0.1.7 路径；升级版本、封装或新版 quality runner 后必须重新验证。
 
 ### 7.1 当前新版的 LLM 占比与防伪验证

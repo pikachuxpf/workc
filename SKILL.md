@@ -55,6 +55,8 @@ P0 范围卡
 
 候选运行、judge 和外部动作分别需要当前题目与用户授权。完整包只能写到题包外或用户明确指定的外部位置；打包不扩大写权，也不能替代 QA 报告。详细边界见 [routing-and-authority.md](references/routing-and-authority.md)。
 
+当前批次正式指令：评分容器运行 `harbor-rewardkit==0.2.0`，题包须统一适配并精确固定到该版本——0.2.0 与 0.2.1 对"装饰器自动注册后再显式注册"的处理不同，会影响准则数量与权重；`0.2.*` 等前缀写法视为未固定，本地验证与每个 run 都必须标注实际精确版本。规则细节见 [seal-rewardkit.md](references/seal-rewardkit.md) 的"7.0 RewardKit 版本固定"。
+
 ### 2.1 P0–P4 Contract Gates（先建契约，后允许返修）
 
 这五个产物可以先保存在工作笔记，并在交付时投影到 `qa_report.md`；不在题包内创建额外清单文件。**没有完成受影响的前置门，不得编辑评分文件；前置门失败时标 `BLOCKED`、`DEPRECATED` 或 `ABANDONED`，不得通过放宽 test、猜测 schema、伪造 evidence 或修改冻结路径绕过。**

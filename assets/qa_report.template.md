@@ -301,6 +301,18 @@ result_digest          = result artifact
 - 每个确认的 tests-side 缺陷必须关联一个常驻回归：最小反例、正例、预期、issue ID、run ID 和 freshness。无法构造时保持 `BLOCKED`，不得标 `FIXED`。
 - P4 exit disposition：{{PASS / BLOCKED / UNVERIFIED}}。任何受影响行 `STALE/UNVERIFIED`，或不同 run 被拼接为整体 PASS 时，`evaluation_certified` 必须为 `NO/BLOCKED`。
 
+### 7.0b RewardKit 版本契约（批次指令：harbor-rewardkit==0.2.0）
+
+| 检查 | 状态 | evidence / mismatch |
+|---|---|---|
+| 题包依赖声明确切 pin `==0.2.0`（非 `0.2.*`/范围/裸包名） | {{status}} | {{Dockerfile/依赖位置与原文；冻结路径问题记 OUT_OF_SCOPE/BLOCKED}} |
+| `test.sh` 版本断言为精确比较（非前缀匹配） | {{status}} | {{断言语句}} |
+| 本地验证环境 harbor-rewardkit 实际版本 | {{0.2.0 / 其他}} | {{解析方式与输出；非 0.2.0 则相关结果 UNVERIFIED}} |
+| 每个 run 标注实际解析版本 | {{status}} | {{run digest 中的版本记录}} |
+| 版本差异导致的准则数量/权重影响已排查 | {{status}} | {{0.2.0 vs 0.2.1 注册差异；装饰器/`rk.` 成对状态核查}} |
+
+- rewardkit_version_contract：{{PASS / FAIL / BLOCKED / NOT_APPLICABLE（legacy 题）}}；返修"准则数量/权重不符"时，版本核对先于注册写法修改。
+
 ### 7.0a C1–C4 交付前 QA 融合
 
 #### C1 Canonical V1 Hard Gate
