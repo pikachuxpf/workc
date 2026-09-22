@@ -55,6 +55,8 @@ canonical 期望为唯一 `tests/criteria_manifest.yaml`；`tests/process`、`te
 | reward.toml 缺席且 runner/claim 允许 | `ABSENT_ALLOWED`；不机械创建 |
 | reward.toml 重复或 runtime 加载非 canonical 副本 | FAIL/BLOCKED；不得猜实际配置 |
 | manifest row 遗漏、额外、重复或跨维错挂 | 报 sync issue；按 runtime 消费身份统计，不让 manifest 自增 R/T |
+| `@criterion` 被注释但底部 `rk.<name>(...)` 调用仍活跃 | check 以未装饰身份静默注册；结构 drift FAIL；两侧成对注释/删除并同步 manifest、权重分母与身份计数后重验 |
+| `rk.<name>(...)` 被注释但装饰器仍存在 | 函数残留不计分；不得把物理存在当 active 身份；计数按实际注册链统计并登记 drift |
 | 静态 checks digest 与 runtime loaded digest 不同 | consistency FAIL，旧结果 `STALE/UNVERIFIED` |
 | 正式来源唯一推导结构修复且在 allowlist | 可修复后重做完整 inventory/consistency；修结构载体本身 A=0 |
 | 结构缺失但来源不足 | 不自动生成；保持 BLOCKED 并移交 |

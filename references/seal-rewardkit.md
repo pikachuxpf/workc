@@ -136,6 +136,8 @@ criteria:
 
 这是一条双向闭合：实际注册且独立计分的 check 都有且只有一个 deterministic row，每个 deterministic row 都解析到一个实际注册/runtime check。它不适用于 quality row 与 `checks.py` 的映射。
 
+装饰器与底部 `rk.<name>(...)` 注册调用是同一个激活单元，状态必须成对：`@criterion` 被注释而 `rk.` 调用仍活跃时，该 check 会以未装饰身份注册进评分链，等于绕过声明形态静默改判据；反之 `rk.` 被注释而装饰器仍在时，函数残留但不再计分，容易把“物理存在”误当“active 身份”。返修中停用某 check 时，两者必须同时注释或同时删除，并在同一提交内更新 manifest 行、权重分母与身份计数；只改一侧是结构 drift，按双向闭合登记 issue 后修复。静态审查用 AST 同时收集装饰器与模块底部调用，任何单侧注释（或单侧残留）都列为不一致。
+
 在 RewardKit 0.1.7 的程序化模式中，带额外 factory 参数的 criterion 可能需要模块底部显式调用 `rk.<name>(angle_id, weight=...)` 才会注册；实际权重来自注册调用，默认机器结果名可能组合函数名与第一个工厂参数。作业验证必须在独立新进程调用当前版本的真实 discover/runner，读取实际 `Session.criteria` 或结果详情；该版本可能缓存按路径导入的模块，同进程重复 discover 不能证明重新注册。版本或封装不同，以实际 decorator/registry 行为为准。
 
 ## 6. Evidence、Task、materialization 与安全

@@ -101,6 +101,8 @@ P0–P4 约束返修过程；C1–C4 负责在最终差异冻结后发现遗漏�
 | legacy 与新版链同时被加载 | hybrid | 按各自实际加载链取身份 | 分链审查，不任选一套 |
 | manifest 单独存在、结构缺件或加载链不明 | unresolved | manifest 不建立身份 | fail closed，追正式 claim/runner |
 
+0917 的 `checks.py` 中，`@criterion` 装饰器与底部 `rk.<name>(...)` 注册调用是同一个激活单元：停用某个 check 时两者必须同时注释或同时删除，只改一侧会造成未装饰注册或幽灵残留，按结构 drift 处理；细则见 [seal-rewardkit.md](references/seal-rewardkit.md) 的“注册与 runtime 一致性”。
+
 0917 profile 的必要结构是：
 
 ```text
