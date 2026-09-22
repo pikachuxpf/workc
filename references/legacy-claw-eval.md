@@ -15,7 +15,7 @@
 - 多轮对话型：grader 可能提供 MUST_ASK、澄清质量、最终答案和批次安全规则；instruction 是首轮用户请求；persona 是后续披露、模糊回答、错误说法和格式约束。0818 防回归要求 bootstrap/环境就绪问题不占任务问题上限；正式 evidence 已有答案时不强制 ask-first 或重复追问。persona 只描述输入场景，按消息/工具真实 actor 绑定，不能把用户、工具或第三方行为错绑给候选。
 - 输出文件型：从 instruction 与原始 resources 独立推导输出路径、schema、字段、数值、排序、去重、冲突和 CSV 规则。HTML judge/test 应读取渲染后的可见语义、结构与可访问文本，不以固定字符切片、CSS 类名或 JavaScript 源码代替内容判定。
 - grader 的默认权威角色可能被批次专用正式规则覆盖；先查版本和适用范围。
-- 输出型 PinchBench 完全忽略 `ground_truth.json`：不读取、不引用、不用于人工交叉验证或运行时测试；`ground_truth.json` 默认禁读（SKILL.md 第 5 节硬性要求），ClawEval 期望值一律先从 instruction 与原始 resources 独立推导，是否允许独立推导后人工交叉检查，必须由当前 grader/批次规则明确授权，并在 QA 报告记录授权来源。solution 和预计算字段不能成为运行时依赖，也不能覆盖独立推导。
+- PinchBench 与 ClawEval 均完全忽略 `ground_truth.json`：WorkC 的分析、返修、复检、报告、tests、候选、runner 与独立 reviewer 不读取、不引用、不用于人工交叉验证或运行时测试（见 [SKILL.md「不可解除的边界」](../SKILL.md#1-不可解除的边界)）。期望值一律从 instruction 与原始 resources 独立推导；其他流程的单独授权或读取结果不得进入 WorkC 的 claim、expected value、evidence 或认证。solution 和预计算字段不能成为运行时依赖，也不能覆盖独立推导。
 
 ## 2. Rubric 设计
 

@@ -136,7 +136,7 @@ Manifest、React prompt 和结构文件增加零个 case。Prompt 配对修复�
 
 ## QA 报告和交付
 
-完成类作业必须使用 [QA 报告模板](./assets/qa_report.template.md)。模板 1.3 要求记录：
+完成类作业必须使用 [QA 报告模板](./assets/qa_report.template.md)。模板 1.4 要求记录：
 
 - 三维结构与 checks cardinality；
 - quality/reward/react prompt 库存、digest、配对、弃用和 consistency；
@@ -145,7 +145,8 @@ Manifest、React prompt 和结构文件增加零个 case。Prompt 配对修复�
 - candidate failure、harness noise、infrastructure failure；
 - post-trajectory 环境事件、精确缺失路径和 repair disposition；
 - LLM 占比、四类负控、freshness 和未运行项；
-- `test_delivery_handoff_ready`、`evaluation_certified`、`platform_submission_ready` 与实际提交状态。
+- C1 canonical V1、C2 独立设计/载体复审、C3 独立 expected-value 复算、C4 QA 平账与 restart-on-change 轮次；
+- `test_delivery_handoff_ready`、`evaluation_certified`、`platform_submission_ready` 与 `external_submission` 实际状态。
 
 保存、打包或上传不等于提交成功；只有验证平台最终状态后才能报告提交成功。
 

@@ -105,7 +105,7 @@ Manifest 常见顶层字段为 `version`、`score_range`、`dimensions`、`crite
 - persona 描述被测输入，不是政策覆盖层。
 - fixtures/resources 和业务文件提供只读 evidence；即使发现问题，WorkC 也不修复它们。
 - grader、rubrics、tests、manifest 和 checks 描述当前评测实现，可用于发现覆盖缺陷，但不能让自身错误变成业务真值。
-- solution、历史题、旧 QA、Oracle 输出和示例默认只是候选交叉检查材料。**`ground_truth.json` 默认禁读**（硬性要求）：PinchBench 完全忽略；其他架构一律先从正式载体独立推导，只有当前题目正式规则明确授权且已完成独立推导时，才可做评分进程外的人工离线交叉检查，并在 QA 报告记录授权来源。无授权读取即按越界处理：作废受影响推导并重新独立推导。tests、候选与通用 runner 都不得运行时读取 ground truth。
+- solution、历史题、旧 QA、Oracle 输出和示例默认只是候选交叉检查材料。**`ground_truth.json` 在 WorkC 中绝对禁读**：分析、返修、复检、报告、tests、候选、runner 与独立 reviewer 均不得读取或引用；期望值只能从允许的正式载体独立推导。其他流程即使声称获得单独授权，其读取结果也不得进入 WorkC 的 claim、expected value、evidence 或认证。
 - runner 决定实际加载、注册、evidence 和聚合事实，不决定业务真值，也不扩大写权。
 
 ## 8. 冲突与阻断

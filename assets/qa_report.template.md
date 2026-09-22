@@ -9,11 +9,15 @@
 | test_delivery_handoff_ready | {{YES / NO / BLOCKED / NOT_APPLICABLE}} |
 | evaluation_certified | {{YES / NO / BLOCKED / NOT_APPLICABLE}} |
 | platform_submission_ready | {{YES / NO / BLOCKED / NOT_APPLICABLE}} |
-| platform_status | {{NOT_REQUESTED / NOT_AUTHORIZED / READY_NOT_SUBMITTED / UPLOADED_NOT_SUBMITTED / SUBMITTED_UNCONFIRMED / SUBMITTED_CONFIRMED / FAILED / BLOCKED / NOT_APPLICABLE}} |
+| external_submission | {{NOT_REQUESTED / NOT_AUTHORIZED / READY_NOT_SUBMITTED / UPLOADED_NOT_SUBMITTED / SUBMITTED_UNCONFIRMED / SUBMITTED_CONFIRMED / FAILED / BLOCKED / NOT_APPLICABLE}} |
 | blocking_issue_ids | {{IDs / none}} |
+| C1 canonical V1 hard gate | {{PASS / FAIL / BLOCKED / NOT_RUN；command/run/digest refs}} |
+| C2 independent design/carrier re-audit | {{PASS / FAIL / BLOCKED / NOT_RUN；reviewer/scope refs}} |
+| C3 independent expected-value recomputation | {{PASS / FAIL / BLOCKED / NOT_RUN；comparison refs}} |
+| C4 QA accounting/status reconciliation | {{PASS / FAIL / BLOCKED / NOT_RUN；reconciliation refs}} |
 | report_generated_at | {{ISO-8601 with timezone}} |
 | reviewer/tool_version | {{value}} |
-| template_version | 1.3 |
+| template_version | 1.4 |
 | human_review_status | {{PASS / FAIL / PARTIAL / BLOCKED / NOT_RUN / NOT_APPLICABLE；无人工证据不得写 PASS}} |
 | technical_lead_review_status | {{同上；不得由代理代签}} |
 | trajectory_stage_status | {{同上；不得由本地 reward 代替}} |
@@ -45,6 +49,7 @@
 - designated_auxiliary_skill / version / evidence：{{正式要求的辅助 skill；未运行不得写已通过}}
 - delivery_inventory：{{legacy rubric/test，或 0917 manifest + process/output/safety checks + optional quality/prompt/reward，以及 qa_report.md}}
 - secret_handling：{{确认报告和日志未写 token/cookie/password/Authorization/秘密值；仅列变量名或 secret reference}}
+- prohibited_input_audit：{{确认未读取 ground_truth.json；tests/** 与 qa_report.md 对 `.pipeline/` 内容零引用，或列出已删除引用/冻结残留路径但不读取或转述其内容}}
 
 ## 2. 基线、结构库存与一致性
 
@@ -57,6 +62,19 @@
 | digest_algorithm / digest | SHA-256 / {{value}} |
 | artifact_path_normalization | {{path separators/case policy; archive member policy; exclusions; traversal/duplicate checks}} |
 | captured_at | {{ISO-8601}} |
+
+### 2.1a P0 Scope Card 与 P1 Baseline Contract
+
+| 项目 | 记录 |
+|---|---|
+| P0 scope card | {{target / mutation / actual tests allowlist / V0–V5 authorization / delivery / prohibited inputs / dynamic isolation preconditions}} |
+| baseline revision / immutable source | {{baseline revision ID；正式来源变化时新建 revision，不覆盖旧基线}} |
+| formal claim carriers / precedence / digests | {{逐项 carrier、版本/日期、SHA-256、precedence}} |
+| runner / aggregation / runtime loader | {{entry command、loader path/digest、registry/aggregation path、version}} |
+| score identity baseline | {{R0/T0/N0、raw→runtime identity mapping、reliability}} |
+| frozen authority inputs / ownership | {{path/digest、producer、candidate reachability/writeability、mount/endpoint}} |
+| candidate / service / verifier evidence roots | {{each root, producer, writeability, separation status}} |
+| P1 gate disposition | {{PASS / BLOCKED / DEPRECATED / ABANDONED；缺项不得做 profile-specific 修复}} |
 
 ### 2.2 0917 结构库存（legacy 填 NOT_APPLICABLE，不机械迁移）
 
@@ -163,9 +181,9 @@
 
 ## 4. Issue、要求与归因台账
 
-| issue_id | root_cause_key | 类别 | formal source | requirement_kind | 受影响 case / non-case | attribution | 状态 | 修复位置 | verification_refs | freshness |
-|---|---|---|---|---|---|---|---|---|---|---|
-| {{ISSUE-001}} | {{key}} | {{漏检/过松/过严/结构/配对/映射/基础设施/冻结/非case}} | {{source}} | {{MANDATORY/ADVISORY}} | {{IDs/scope}} | {{candidate_failure/harness_noise/infrastructure_failure/not_applicable}} | {{OPEN/FIXED/BLOCKED/DEPRECATED/ABANDONED/ACCEPTED/OUT_OF_SCOPE/DISPUTED}} | {{仅 tests/** 授权位置；只读发现可列冻结证据}} | {{run IDs}} | {{FRESH/STALE/UNVERIFIED}} |
+| issue_id | root_cause_key | invariant_id | 类别 | formal source | requirement_kind | 受影响 case / non-case | attribution | 状态 | 修复位置 | permanent_regression_ref | change-impact / refreshed-run | verification_refs | freshness |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| {{ISSUE-001}} | {{key}} | {{P3-I#}} | {{漏检/过松/过严/结构/配对/映射/基础设施/冻结/非case}} | {{source}} | {{MANDATORY/ADVISORY}} | {{IDs/scope}} | {{candidate_failure/harness_noise/infrastructure_failure/not_applicable}} | {{OPEN/FIXED/BLOCKED/DEPRECATED/ABANDONED/ACCEPTED/OUT_OF_SCOPE/DISPUTED}} | {{仅 tests/** 授权位置；只读发现可列冻结证据}} | {{minimal counterexample + positive case + expected + run ID；无法构造则 BLOCKED}} | {{changed path/field → invalidated controls/runs → fresh replacements}} | {{run IDs}} | {{FRESH/STALE/UNVERIFIED}} |
 
 - 已发现 issue：{{count}}
 - mandatory 未满足：{{count and IDs}}
@@ -230,6 +248,17 @@
 - secret_redaction_check：{{PASS/FAIL}}
 - dynamic_execution_disposition：{{PROCEED/BLOCKED/NOT_APPLICABLE}}
 
+### 6.1 P2 Evidence Trust Ledger
+
+每个 score-bearing identity 一行。candidate-owned evidence 只能证明候选行为，不能成为独立真值；live service 成功响应（包括 `[]`）是权威结果，禁止回退到 candidate-writable 文件。
+
+| criterion / runtime ID | formal claim / trigger | authority truth source | producer / ownership | candidate reachable or writable | mount / endpoint / digest | fallback policy | live-empty / forged-file / unavailable expected result | run IDs / freshness |
+|---|---|---|---|---|---|---|---|---|
+| {{ID}} | {{claim / applicability}} | {{source}} | {{verifier/authority-owned / candidate-owned / infrastructure-owned}} | {{yes/no + basis}} | {{value}} | {{NONE or formally allowed behavior}} | {{expected values and attribution}} | {{refs}} |
+
+- P2 gate disposition：{{PASS / BLOCKED / DEPRECATED / ABANDONED}}。
+- 每条正向过程或完成度 claim 若没有非空、可信的 authority truth source，必须写 `BLOCKED`；不得借 agent 日志、文件副本、叙述或 hash 转化为 PASS。
+
 ## 7. 验证证据、HTML Evidence 与新鲜度
 
 | run_id | 验证项 | scope | authority | 状态 | 时间 | 结果摘要 / RC | evidence_ref | freshness |
@@ -262,6 +291,59 @@ result_digest          = result artifact
 ```
 
 `FRESH` 要求当前全部适用输入摘要、路径和 runtime 加载一致且范围足够；任一变化使旧结果 `STALE`。不得把定向回归写成全量，不得拼接不同 run。
+
+### 7.0 P3 Invariant / Mutation Matrix 与 P4 Change-Impact Ledger
+
+| invariant_id | 不变量 / 正式依据 | 最小正反例或变异 | expected result | changed path/field | 失效的 claim / identity / validator / aggregation | 必跑 control / run | replacement run / freshness |
+|---|---|---|---|---|---|---|---|
+| {{I#}} | {{scope/source/topology/weight/non-vacuity/no-fallback/trajectory/anchor/attribution/freshness}} | {{single-variable mutation}} | {{PASS/FAIL/BLOCKED and attribution}} | {{path/field}} | {{refs}} | {{refs}} | {{run ID / FRESH or remaining BLOCKED}} |
+
+- 每个确认的 tests-side 缺陷必须关联一个常驻回归：最小反例、正例、预期、issue ID、run ID 和 freshness。无法构造时保持 `BLOCKED`，不得标 `FIXED`。
+- P4 exit disposition：{{PASS / BLOCKED / UNVERIFIED}}。任何受影响行 `STALE/UNVERIFIED`，或不同 run 被拼接为整体 PASS 时，`evaluation_certified` 必须为 `NO/BLOCKED`。
+
+### 7.0a C1–C4 交付前 QA 融合
+
+#### C1 Canonical V1 Hard Gate
+
+| canonical command / entrypoint | workdir | input/grader/validator digests | scope | started/finished | RC | output/result digest | status |
+|---|---|---|---|---|---:|---|---|
+| {{value}} | {{value}} | {{value}} | {{schema/parser/mapping/aggregation/carrier/drift controls}} | {{times}} | {{RC}} | {{refs}} | {{PASS/FAIL/BLOCKED/NOT_RUN}} |
+
+- canonical-entry discovery basis：{{actual runner/validator/self-test chain；不得只把多个局部 PASS 拼成入口}}
+- C1 execution status / validation result：{{未建立/未运行入口 = NOT_RUN + blocker；已运行发现测试侧 defect = FAIL；非测试侧 infrastructure 中断 = BLOCKED；完整成功 = PASS；静态已知 defect 另列 issue，不被 NOT_RUN 隐藏}}
+- schema/TOML/YAML inventory and mutation controls：{{carriers, allowed keys/cardinality/types, unknown-field policy, single-variable failures}}
+- C1 limitations：{{V1 不替代 V2+ import/harness/candidate/Oracle/nop/judge certification}}
+
+#### C2 独立设计与 Source-carrier 覆盖复审
+
+| reviewer / independence basis | scope / input digests | carrier inventory / integrity | score-identity and authority closure | new or remaining findings | disposition |
+|---|---|---|---|---|---|
+| {{value；不是人工/负责人代签}} | {{claims, identities, carriers, runtime}} | {{exact normalized paths, versions/digests, consumers, policy-gated integrity/canary}} | {{PASS/FAIL/BLOCKED}} | {{issue IDs/none}} | {{PASS/FAIL/BLOCKED/NOT_RUN}} |
+
+#### C3 独立 Expected-value 复算
+
+| value/claim ID | formal non-prohibited source | independent derivation / tool | recomputed value | implementation/manifest/report values | three-way result | issue/run refs |
+|---|---|---|---|---|---|---|
+| {{ID}} | {{carrier/version/digest}} | {{formula/script/ref}} | {{value or BLOCKED/N/A}} | {{three values}} | {{MATCH/MISMATCH/BLOCKED}} | {{refs}} |
+
+不得用 Oracle、nop、judge、ground truth 或历史题数值替代独立推导。无法独立推导时保持 `BLOCKED/N/A`。
+
+#### C4 QA 平账、状态对账与重启轮次
+
+| cycle_id | frozen-input/diff digest | C1 | C2 | C3 | findings / changed evidence | restart_from | final disposition |
+|---|---|---|---|---|---|---|---|
+| {{cycle}} | {{digest}} | {{status/run}} | {{status/review}} | {{status/ref}} | {{IDs/none}} | {{P gate/C1/none}} | {{PASS/STALE/BLOCKED}} |
+
+| reconciliation | expected relation | observed | status / evidence |
+|---|---|---|---|
+| identity counts | `N0=R0+T0`；`R1=R0+AR-DR`；`T1=T0+AT-DT`；`N1=N0+A-D` | {{value}} | {{PASS/FAIL/N/A + refs}} |
+| issue metrics | `A=AR+AT`；`D=DR+DT`；`F` 仅 FIXED+PASS+FRESH | {{value}} | {{status}} |
+| issue/run freshness | 每个 FIXED issue 有常驻回归与当前 digest 的 FRESH run | {{value}} | {{status}} |
+| blockers/status | blocker 必须投影到受影响状态；overall 不得覆盖底层 evidence | {{value}} | {{status}} |
+| readiness separation | V1 handoff 与 V2+ evaluation certification 分开 | {{value}} | {{status}} |
+| allowlist/prohibited references | changed paths 闭合；tests/report 不引用 `.pipeline/` 内容 | {{value}} | {{status}} |
+
+任何 C2/C3/C4 发现导致 tests 或结论证据变化时，旧 C1–C4 全部 `STALE`，回到最早受影响的 P gate，并从 C1 完整重启；禁止跨 cycle 拼接 PASS。
 
 ### 7.1 HTML Evidence
 
@@ -307,7 +389,7 @@ result_digest          = result artifact
 
 | event_id | stage | trajectory/run_id | observed_at | environment_cause | exact_normalized_missing_path | expected_source_or_mount | responsible_party | evidence | status | repair_disposition |
 |---|---|---|---|---|---|---|---|---|---|---|
-| {{ENV-001}} | {{pre/bootstrap/run/post-trajectory}} | {{ref}} | {{ISO-8601 with timezone}} | {{verified cause}} | {{单个精确规范化路径}} | {{image/platform/mount/source}} | {{party}} | {{refs}} | {{BLOCKED/OUT_OF_SCOPE}} | `NO_FURTHER_REPAIR_REQUIRED_ENVIRONMENT_HANDOFF` |
+| {{ENV-001}} | `post-trajectory` | {{ref}} | {{ISO-8601 with timezone}} | {{verified cause}} | {{单个精确规范化路径}} | {{image/platform/mount/source}} | {{party}} | {{refs}} | {{BLOCKED/OUT_OF_SCOPE}} | `NO_FURTHER_REPAIR_REQUIRED_ENVIRONMENT_HANDOFF` |
 
 - missing_path_classification：{{environment-provided path missing / candidate-required deliverable missing / unresolved}}
 - classification_basis：{{formal source + healthy-harness evidence；不得仅凭 ENOENT 猜测}}
@@ -337,6 +419,13 @@ result_digest          = result artifact
 | difference_audit | {{status}} | {{refs}} | {{value}} |
 | package_integrity | {{status}} | {{refs}} | {{value}} |
 | external_submission | {{status}} | {{refs}} | {{value}} |
+| P0–P4 contract gates | {{PASS/BLOCKED/UNVERIFIED}} | {{baseline/topology/invariant/freshness refs}} | {{missing gate or none}} |
+| C1 canonical V1 hard gate | {{status}} | {{command/run/digest refs}} | {{missing coverage or none}} |
+| C2 independent design/carrier re-audit | {{status}} | {{review refs}} | {{findings/blocker or none}} |
+| C3 independent expected-value recomputation | {{status}} | {{comparison refs}} | {{mismatch/blocker or none}} |
+| C4 QA accounting/status reconciliation | {{status}} | {{reconciliation/cycle refs}} | {{contradiction or none}} |
+
+- `test_delivery_handoff_ready=YES` 的前提：授权 tests/report、P0–P4 静态交付契约、allowlist diff 与 C1–C4 均闭合且四门均 `PASS`。`evaluation_certified=YES` 还要求全部适用 V2+ 动态门 `FRESH/PASS`，并且没有把不同 run/cycle 的局部结果拼接成整体认证。实际 mount/endpoint provenance 或 candidate run 未授权/未执行时，handoff 可按静态契约判断，但 evaluation 必须为 `NO/BLOCKED`。
 
 | 收口环节 | 状态 | 复核人/授权来源 | artifact digest / evidence refs | 未完成原因 |
 |---|---|---|---|---|

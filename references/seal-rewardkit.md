@@ -50,6 +50,10 @@
 
 quality 的其他字段拼写、层级、值类型、枚举和默认值仍以当前任务 schema 与实际 runner 为准；正式页面、题目内 schema 和 runner 发生差异时，记录冲突并按当前批次明确优先级处理，不为了套历史示例修改真实契约。evidence 路径必须由 runner 实际挂载并被 criterion 消费；不存在的示例路径、猜测路径和未挂载载体不得写入正式文件。
 
+若需要 evidence registry、mapping validator metadata 或额外 manifest 字段，先完成 WorkC P1/P2 inventory，确认当前正式 schema 明示允许扩展。**schema 未允许时不得向 manifest 添加未知顶层或行字段。**此时只能使用 runner 已批准、不会被自动 discover 为评分模块的 tests-side 位置，或不可变 harness 配置；没有合法落位则 `BLOCKED`。不论落位，validator 必须在 scoring runner 前 fail-closed 执行，并记录其路径、digest、启动命令和至少两项单变量漂移负控。
+
+Schema 漂移审查必须解析当前实际存在且被加载的 YAML/TOML，而不是只 grep 期望字符串。对每个载体记录允许的顶层键、条目 cardinality、字段/type/enum、路径 target 与 unknown-field policy，并至少用“改一个权重/身份”和“增一个未知 evidence/字段”等单变量 mutation 证明 validator 会非零退出。正式 schema 允许可选项时不得把缺席机械判失败；正式 schema 不允许的质检元数据不得为了审计方便写入载体。
+
 每个 `[[criterion]]` 只承担一个可独立计分的质量事实，使用稳定且在正式命名空间内唯一的 `id`。核对 points、criterion weight、dimension weight、reward 配置和聚合的实际语义，不能假设它们等价。已读 RewardKit 与 quality 页面只用于核对公开结构和 runner 行为；不复制内部原文、固定身份文本、示例题路径、canary、GT source 或任何秘密值。
 
 ## 4. `criteria_manifest.yaml`：聚合与投影
@@ -85,7 +89,7 @@ criteria:
     score_type: float
 ```
 
-实际行还应填写当前 schema 要求且能从源定义投影出的 dimension、weight、evidence、source 等字段。上例 quality/deterministic 是行的职责分类，格式页的 `score_type` 示例值实际为 `likert/float`，不能用职责名称冒充枚举；相对路径仍须按当前解析根确认真实 target。
+实际行还应填写当前 schema 要求且能从源定义投影出的 dimension、weight、evidence、source 等字段。上例 quality/deterministic 是行的职责分类，格式页的 `score_type` 示例值实际为 `likert/float`，不能用职责名称冒充枚举；相对路径仍须按当前解析根确认真实 target。`evidence` 是消费声明，不是 ownership 证明；每行仍须在 WorkC P2 ledger 记录 producer、candidate writeability、live source、fallback policy 和适用变异控制。
 
 当前判分对齐页还说明 `summary/partial_credit/evidence` 的速览与部分分用途。若当前 schema 包含这些字段，核对部分分各项与 checks 实际算术及总分一致，不套用示例“十分”到其他 points。格式页的 `angle/rule_hint` 与此形态按当前 schema 选择，不盲目并入所有字段。Manifest 用于定位、速览和对照，正式规则、证据消费与权重必须打开对应 checks/quality 和 runner 验证。
 
@@ -100,6 +104,8 @@ criteria:
 5. deterministic row 的 dimension、weight、evidence、source 必须与 check 注册、实际消费 evidence 和 runner 行为一致。
 6. `angle_id` 在 manifest 的适用命名空间内唯一、稳定；最终机器结果若使用另一命名规则，要保留可复核映射。
 7. helper、诊断项、环境 preflight、重复别名和未注册函数不进入 manifest scoring rows。
+8. source/evidence carriers 以规范化精确路径闭合到实际 consumer；路径子串、display name、候选自述或“文件曾被复制”不能建立 source authority。
+9. 对正式要求只读或完整性保护的 carrier，依据当前正式 policy 记录 existence/type/symlink/path/digest 检查及缺失/篡改单变量负控；只有正式 policy 提供 canary 时才验证其存在与值，禁止复制示例 GUID 或全局强制 canary。
 
 不要错误要求每个 quality criterion 映射到 `checks.py`。Quality 的闭合关系是 `quality.toml criterion ↔ quality manifest row ↔ judge/runtime quality result`；deterministic 的闭合关系是 `checks.py registration/runtime ID ↔ deterministic manifest row`。Manifest 汇总二者，但不会把 quality criterion 变成程序化 check。
 
@@ -136,15 +142,17 @@ criteria:
 
 Evidence 声明、冻结动作、实际路径和 scorer 消费行为必须分别核对。确认记录确由 runner 挂载，实体、参数和响应可信；不能仅凭最终文件倒推出过程调用，也不能用候选自述替代审计证据。Quality judge 只接收该 criterion 所需的最小真实 evidence；deterministic check 只读取其正式允许的载体。
 
-以下 tests 外文件始终冻结，只可读取：
+以下 tests 外文件始终冻结；仅允许按正式任务需要只读前三类，后两类受额外禁令约束：
 
 - `task.toml`：任务分类、runner、环境、用户模拟器和 verifier 环境声明；
 - `materialization_manifest.yaml`：需求载体、权限、路径解析和 input/output recast；
-- `meta.json` 或 pipeline 状态：生成、版本或流水线元数据，不自动成为业务真值；
+- 题包根目录、且不位于 `.pipeline/` 下的 `meta.json`：生成或版本元数据，不自动成为业务真值；
 - `solution/`：仅可用于正式授权范围内的离线交叉检查，不能以“让 solution 通过”为由定义评分项；
-- `ground_truth.json`：默认禁读，遵守 SKILL.md 第 5 节硬性要求。
+- `ground_truth.json`：绝对禁读，遵守 [SKILL.md「不可解除的边界」](../SKILL.md#1-不可解除的边界)。
 
-期望值必须先从 instruction、workspace policy、fixtures、materialization 与 runner 声明的 evidence 独立推导。只有 Seal 当前正式规则明确授权、且独立推导已完成时，才可在评分进程外人工离线交叉检查 ground truth，并在 QA 报告记录授权来源与使用范围；无授权读取按越界处理，作废受影响推导并重新独立推导。不得把 ground truth 挂载或暴露给候选/正式评分容器，不得由 quality、checks、runner、环境变量动态读取，也不得作为 manifest `source` 覆盖当前权威载体。静态审查须覆盖 `test.sh`、Oracle/nop 脚本、Dockerfile 与挂载参数。
+题包 `.pipeline/` 下的任何状态、元数据或其他文件均不得打开、读取、解析、搜索或摘要；只能在允许读取的 work 数据中审计对该目录的路径引用。
+
+期望值必须从 instruction、workspace policy、fixtures、materialization 与 runner 声明的允许 evidence 独立推导。WorkC 的分析、返修、复检、报告、tests、候选、runner 与独立 reviewer 均不得读取 ground truth；其他流程即使声称获得单独授权，其读取结果也不得进入 WorkC 的 claim、expected value、evidence 或认证。不得把 ground truth 挂载或暴露给候选/正式评分容器，不得由 quality、checks、runner、环境变量动态读取，也不得作为 manifest `source` 覆盖当前权威载体。静态审查须覆盖 `test.sh`、Oracle/nop 脚本、Dockerfile 与挂载参数。
 
 若 materialization 将同一需求拆到多个载体，按正式优先级和 recast 规则合并理解。Runner 外部 preflight 至少验证 fragment→resource→materialized target→io_target 引用闭合，authority/canonical/freshness/access 一致，必需 slot 有唯一当前权威载体；stale、legacy 和 distractor 不进入当前真值。Preflight 失败记 `BLOCKED`，不进入候选计分分母。
 
@@ -227,27 +235,17 @@ Post-trajectory 才发现环境缺失时，在 `qa_report.md` 对受影响项逐
 
 AI 生成或修改的 quality criterion、manifest row、check、expected value、judge 结论和 QA 摘要必须由人工回到正式规则、原始 evidence 与实际 runner 复核；reward、Oracle/nop 或 judge 通过不能替代该复核。
 
-## 10. 新版 Seal 测试侧作业最低清单
+## 10. 新版 Seal 测试侧作业 P0–P4 短清单
 
-1. **角色与范围**：确认这是 WorkC 测试侧作业；实际修改仅限授权的 `tests/**` 子集，并规划根目录 `qa_report.md`。
-2. **架构与加载链**：由正式当前格式和 runner 判定 `legacy / seal-rewardkit-0917 / hybrid / unresolved`；`manifest-only` 仅作为结构观察，不是 architecture 值；保留有效 legacy，不强迫迁移。
-3. **必要结构**：新版必须有 `tests/criteria_manifest.yaml` 和 process/output/safety 三维；规范化后每维恰好一个 `checks.py`，deterministic-only 也不例外。
-4. **可选配置**：只有 `tests/process/quality.toml` 与 `tests/process/reward.toml` 可选；quality 存在时同目录必须恰好一个 `react_prompt.md`。
-5. **Quality/prompt 合同**：固定 `judge="react"`、`prompt_template="react_prompt.md"`；缺失、重复、歧义或模板不一致时整项 `DEPRECATED/ABANDONED`，不自动创建、猜写、改名、拼接或合并 prompt，prompt 不新增身份/权重。
-6. **Manifest 投影**：同时投影实际存在的 quality 与 deterministic rows；quality exact-once、checks exact-once，无 extras/omissions/duplicates，所有 scorer target 可解析。
-7. **一致性**：核对 dimension、weight、evidence、source 和 runtime ID；不要求 quality criterion 映射到 `checks.py`。
-8. **Registry**：在全新进程核对三维 checks 的注册/runtime ID、漏载、幽灵项、重复注册、实际权重和返回语义。
-9. **0818 防回归**：bootstrap 不占问题上限；已有答案不强制 ask-first；actor 不错绑；HTML 取可见语义；不可用服务/缺凭据、harness noise 与 infra failure 不算候选失败；建议不升级成强制；assertion message 不产生身份。
-10. **Evidence 与确定性**：trajectory/workspace/frozen audit 挂载真实；精确值、集合、文件、API、CSV、ZIP、语法和只读哈希使用确定性 checks。
-11. **安全**：正向义务和禁止动作分别评分；无秘密泄露、ground-truth 依赖、fixture 自证或 reset 擦除审计。
-12. **聚合与版本**：验证实际 RewardKit/Seal 版本并复算 quality、checks、dimension 和总 reward；manifest 不额外计分，只报告 runner 实际存在的 gate。
-13. **计数**：一个 quality `[[criterion]]` 计一个 R，一个独立实际 scoring check 计一个 T，manifest 行计零；按冻结的 `R0/T0/N0` 和 `AR/AT/A` 计算指标。
-14. **运行**：使用项目 runner 和新鲜隔离目录；记录各维度结果、总 reward、返回码、版本和基础设施错误。
-15. **环境移交**：post-trajectory 环境缺失完整记录阶段、原因、精确路径、预期来源/挂载和 evidence，标 `BLOCKED/OUT_OF_SCOPE` 及指定 repair disposition；记录后无需其他修复。健康环境中候选应交付却缺失才 FAIL。
-16. **差异审计**：题包内只允许本轮实际授权的 `tests/**` 子集和根目录 `qa_report.md` 变化；不提交缓存、日志、audit、真实 secrets 或候选产物。
-17. **强制报告**：完成、返修或作业交付自检必须生成或更新根目录 `qa_report.md`，记录 test allowlist 外零变化并把报告标为唯一固定例外；缺少报告不得声明作业完成。
-18. **新版占比与对照**：证明全部 LLM 项最终有效占比≤40%；验证空壳、错误数值、缺关键内容和 judge 消融，条件不足记阻塞，不凭参考候选高分认证。
-19. **人员与阶段**：轨迹反馈逐项三段式归因、跨所有提供轨迹比较；独立记录个人多轮复测、人工核查、技术负责人批量复核与算法收口，不代签未发生的环节。
+本节是 WorkC 主 Skill 的 P0–P4 Contract Gates 在 0917 任务上的最小执行入口；细则以主 Skill、当前 schema、runner 和本参考前文为准，避免维护第二份会漂移的长清单。
+
+1. **P0 范围**：确认 WorkC tests-side 授权、实际 `tests/**` allowlist、`qa_report.md`、V0–V5 上限、禁读项、动态隔离和 service/judge 授权。缺任一前提不得静默升级运行。
+2. **P1 基线与加载链**：在编辑前确认当前 schema、`legacy / 0917 / hybrid / unresolved`、manifest 与三维唯一 `checks.py`、可选 quality/prompt/reward、`R0/T0/N0`、runtime loaded path/digest、registry 与真实聚合。quality/prompt 违规先 `DEPRECATED/ABANDONED`；deterministic-only 与有效 legacy 保持合法。
+3. **P2 证据拓扑**：逐项闭合 `formal claim → authority source → producer/writeability → scorer/runtime ID → weight/aggregation → attribution`。manifest evidence 不能证明 ownership；live service 成功响应（包括 `[]`）不得回退到 candidate-writable 文件。正向 claim 没有可信、非空 authority truth source 则 `BLOCKED`。
+4. **P3 不变量与控制**：至少覆盖受影响的 structure/identity/weight closure、非空性、伪造 evidence、live unavailable、双模式 trajectory、锚点污染、HTML 可见语义、candidate/harness/infrastructure 归因。每个确认的 tests-side 缺陷必须留下最小反例、正例和预期的常驻回归；不能构造则不写 FIXED。
+5. **P4 变更与交付**：每个修改映射到失效的 claim、validator、control、aggregation 与 run；只有替代验证 `FRESH/PASS` 才能认证。禁止跨 run 拼接局部 PASS。完成后更新 `qa_report.md`、做 allowlist diff 审计，并将环境/冻结路径问题移交为 `BLOCKED/OUT_OF_SCOPE`。
+
+若需要 manifest registry 或 validator metadata，只有当前正式 schema 明示允许扩展时才写入 manifest；否则采用 runner 已批准且非 scoring-discovery 的 tests-side 落位，或不可变 harness。没有合法落位即 `BLOCKED`，不得通过未知 YAML 字段破坏正式契约。
 
 ## 11. 典型分流与计数示例
 

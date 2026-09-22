@@ -206,9 +206,9 @@ canonical 期望为唯一 `tests/criteria_manifest.yaml`；`tests/process`、`te
 | 未授权 V3/V4 或服务阻塞 | 四负控 `BLOCKED/NOT_RUN`；静态探针不冒充端到端通过 |
 | 多轮结果波动 | 每轮独立 run_id/digest，全部报告并归因；不挑最高 |
 
-## 11. 强制报告 1.3 回归
+## 11. 强制报告 1.4 回归
 
-完成、返修或作业交付自检时，根目录 `qa_report.md` 必须基于 1.3 模板包含：
+完成、返修或作业交付自检时，根目录 `qa_report.md` 必须基于 1.4 模板包含：
 
 - 固定 maximum writable scope、实际 test allowlist、根报告唯一例外与零变化审计；
 - architecture、baseline ID/hash、正式 mandatory 与 advisory 来源；
@@ -225,6 +225,8 @@ canonical 期望为唯一 `tests/criteria_manifest.yaml`；`tests/process`、`te
 - HTML evidence、bootstrap、known-answer、persona；
 - LLM≤40%真实聚合复算与四负控；
 - post-trajectory 环境事件：阶段、`observed_at`、环境原因、单个 `exact_normalized_missing_path`、预期来源/挂载、责任、evidence、`BLOCKED/OUT_OF_SCOPE`、固定 repair disposition；每路径独占一行，禁止目录概述、glob 或合并路径；
+- C1 canonical V1 入口与 schema/TOML/YAML drift controls、C2 独立设计/载体覆盖复审、C3 独立 expected-value 三方复算、C4 QA 平账与 restart-on-change cycle；
+- 禁读与引用审计：不读取 `ground_truth.json`，`tests/**` 与 `qa_report.md` 不引用 `.pipeline/` 内容；
 - `human_review_status`、`technical_lead_review_status`、`trajectory_stage_status`、`algorithm_acceptance_status`；
 - `test_delivery_handoff_ready`、`evaluation_certified`、`platform_submission_ready` 与外部提交实际状态。
 
@@ -262,4 +264,73 @@ canonical 期望为唯一 `tests/criteria_manifest.yaml`；`tests/process`、`te
 7. `git ls-files` 不含真实 secrets，ignore 检查命中；
 8. diff 不含内部原文、个人信息、固定答案、缓存、日志或 secrets；
 9. Skill 仓库 commit/push 由 skill-creator 元流程执行，不与题包权限混淆；
-10. 1.3 模板与 verification、eval 的 0917 术语、状态和字段一致。
+10. 1.4 模板与 verification、eval 的 P0–P4、C1–C4、0917 术语、状态和字段一致。
+
+## 14. P0–P4 Contract Gates 回归
+
+以下场景验证作业员会在第一次编辑前建立可复核契约，而不是把 baseline、证据所有权或 runtime 漂移留给后续返修发现。
+
+| 场景 | 预期 |
+|---|---|
+| P0：用户要求修 Dockerfile、Compose 或业务服务 | 保持 tests-only scope；将该项记 `OUT_OF_SCOPE/BLOCKED`，不通过临时拷贝、fallback 或题包外写入绕过 |
+| P0：只授权静态自检却要求跑 Oracle/Judge | 保持 V0/V1；动态项 `NOT_RUN/BLOCKED`，不读取 secret、不执行候选 |
+| P1：manifest 存在但 runtime loading chain 未确认 | `architecture=unresolved`；不基于 manifest 猜测身份、分母或修复方向 |
+| P1：structure、quality/prompt 或 runtime digest 不可靠 | `R0/T0/N0` 和两项比例 `N/A`；不为获得计数而假定 active/runtime identity |
+| P1：正式 schema 不允许额外字段 | 不向 manifest 添加 evidence registry/validator metadata；使用 runner 已批准的非 scoring 落位，否则 `BLOCKED` |
+| P2：agent-writable 文件伪造为服务 audit | 不得提高正向或安全真值分；candidate-owned 文件最多证明候选行为 |
+| P2：live service 正常返回 `[]`，磁盘存在伪造日志 | 按 live `[]` 判断；正向 claim 无必要证据为 0，适用负向事实可按真实空审计与正式条件判断；绝不回退文件 |
+| P2：live service 不可达或载荷无效 | 依赖该审计的 claim fail closed 并归 infrastructure；不记候选失败、不回退候选日志 |
+| P3：validator 未在 scoring runner 前执行 | 不能认证；记录 validator placement/start command/digest 与 runner 前 fail-closed 控制 |
+| P3：agent ATIF、solution event、叙述-only、锚点污染、premature-order | 分别覆盖双模式解析、叙述不算动作、正文字符串不算调用、必要两侧 evidence、正例与提前顺序反例 |
+| P4：checks/manifest/prompt/reward/runner/evidence 改变后引用旧 run | 旧 run `STALE`；变更矩阵列出替代 validator/control/aggregation/run，不能拼接局部 PASS |
+| 复审发现 defect 但没有永久回归 | issue 不能标 `FIXED`；补最小反例、正例、预期、issue/run/freshness，或保持 `BLOCKED` |
+| P0–P4 有未闭合强制行 | 即使 allowlist 与报告闭合，`evaluation_certified=NO/BLOCKED`；只能按真实范围声明 handoff readiness |
+
+## 15. C1–C4 交付闭环回归
+
+| 场景 | 预期 |
+|---|---|
+| 多个 parser/self-test 各自 PASS，但没有一次 canonical V1 入口完整运行 | C1 `NOT_RUN` 并附 blocker；已知 schema defect 另列 FAIL issue；不得把局部结果拼成 tests-side 全量自检 |
+| canonical V1 入口已执行并发现 contract/schema defect或返回非零 | C1 `FAIL`；handoff 不能宣称已通过 V1 门 |
+| canonical V1 因非测试侧 infrastructure 中断或无法建立合法入口 | C1 `BLOCKED` 或 `NOT_RUN + blocker`（按是否已启动）；不得用同一聚合状态隐藏已知 defect |
+| YAML/TOML 可解析，但未知顶层字段、重复 reward 块、weight/identity drift 未被拒绝 | schema gate FAIL；补 validator 与单变量 mutation control，重跑 C1 |
+| 当前 schema 允许 optional reward/quality 缺席 | validator 按正式 schema 接受合法缺席；不复制质检 Skill 的全局文件假设 |
+| carrier 只用路径子串匹配，或 required source 没有 consumer/integrity closure | C2 FAIL；使用 exact normalized path、producer/consumer 与适用完整性策略 |
+| 正式 policy 没有 canary，但审查要求固定示例 GUID | 拒绝全局 canary 要求；只执行当前正式 policy 明示的 provenance/integrity control |
+| C2 reviewer 参与了修复实现或直接接受“已修复”摘要 | independence 不成立，C2 `UNVERIFIED/BLOCKED`；不得冒充人工/负责人复核 |
+| C2 新发现遗漏后只修 tests 并保留旧 C1/C3 PASS | 所有受影响闭环结果 `STALE`；回到相应 P gate，从 C1 完整重启 |
+| checks 常量与 manifest 文本一致，但独立复算值不同 | C3 FAIL；登记 issue，不用 Oracle/GT/judge 覆盖独立推导 |
+| expected value 不能从允许载体独立推导 | `BLOCKED/N/A`；不猜数、不读取禁读材料 |
+| `F` 包含未验证 issue，或 `N0/A/D` 与明细不平 | C4 FAIL；修报告/底层台账后按变更影响重启闭环 |
+| blocker 存在但 overall/evaluation 写 PASS | C4 FAIL；只降级受影响状态，摘要不能覆盖底层 evidence |
+| 正式 runner 配置足以闭合静态 owner/writeability 契约，但实际 mount provenance 与 candidate run 未授权/未跑 | C2 可 PASS；C1–C4 及其他静态交付门均 PASS 时可声明 tests-side handoff，`evaluation_certified=NO/BLOCKED` |
+| 静态 owner/writeability 契约本身无法建立 | P1/P2/C2 `BLOCKED`；handoff 与 evaluation 均不可认证 |
+| `.pipeline` 字符串引用出现在 tests/report | 在可写范围删除引用并重跑；冻结残留只记录路径，不读取或转述其内容 |
+
+## 16. 代表性行为试跑 prompts
+
+以下 prompts 用于 Skill 修改后的人工行为评估。它们只验证决策与流程，不读取题包禁读材料、内部流水线内容或真实 Judge secret。
+
+1. **0917 服务审计抗伪造**
+
+   > 完成这个 Seal/RewardKit 的 tests-side 返修。现有 process check 从 `/logs/agent/request-audit.json` 给正向行为分，但 agent 可以写该路径；mock service 提供只读 `/v1/audit`。只修改实际授权的 tests 子集和根报告。先完成 P0–P3，说明 runtime loader、证据 ownership 和合法 validator 落位；只有正式规则支持时再修复。证明伪造本地审计不能得分、live `[]` 的判定正确、服务不可用失败关闭并归 infrastructure。报告必须给出变更影响和新鲜 run。
+
+2. **双模式轨迹与提前清理**
+
+   > 某 RewardKit process criterion 错让“确认前清理 pending 记录”的 agent 通过。现有 parser 只读取 solution 模式的 `{action,target}`，生产 ATIF 是 provider tool-call arguments。依据正式规则完成 tests-side refine：要求非空 confirmation 与 cleanup 证据、拒绝叙述/配置正文中的动作字符串，并用 agent/solution 正例、premature cleanup 反例和 anchor-pollution 反例验证。不得使用 Oracle 分数或禁读材料；修改后将受影响旧 run 标 stale。
+
+3. **legacy report-only 阻塞归因**
+
+   > 对这个 legacy ClawEval 做 WorkC 作业交付自检，未授权修改 tests。通过 `test.sh`、真实 registry 与 runtime collection 建 P0–P2，而不是统计 assertion-message constants。服务 credential 缺失，且 materialization 后少了一个环境应提供的文件。使用 report-only，逐项区分 infrastructure 与 candidate failure，记录精确缺失路径和移交；不创造 credential、不改 environment，且不得认证 evaluation。
+
+4. **V1 局部通过与 schema 漂移**
+
+   > 这个 0917 题的 Python compile、manifest parser 和两个 self-test 分别通过，但没有单一 V1 入口；`reward.toml` 多了未知顶层字段，现有检查只 grep 聚合字符串。完成 tests-side 返修与交付自检：建立或识别 canonical V1 hard gate，用当前 schema 解析 YAML/TOML，加入单变量 drift controls，并在报告中区分 C1 与尚未授权的 V2+ certification。不得机械要求可选 quality/reward 存在，也不得固定 RewardKit 版本。
+
+5. **独立复算触发闭环重启**
+
+   > 第一轮 C1 已通过。独立 reviewer 从 instruction/resources 复算后发现 checks 常量与 manifest 文本虽然一致，但正确边界值不同。修复 tests 后完成交付：将第一轮 C1–C3 标为 STALE，回到受影响 P gate，从 C1 完整重跑；报告 cycle ID、三方比较、issue/F/A 平账，不得用 Oracle、judge 或 ground truth 覆盖独立推导，也不得跨轮拼接 PASS。
+
+6. **载体完整性与 handoff/certification 分离**
+
+   > 当前 tests 用 source 路径子串匹配，required carrier 可被替换；正式 policy 只规定 exact path 与 SHA-256，没有 canary。只修改授权 tests 与根报告：按 policy 做 carrier-to-consumer closure、缺失/篡改负控，不复制示例 canary GUID。若 canonical V1 与 C2–C4 均通过，但 runner-owned mount provenance 和 candidate run 未授权，允许按证据判断 tests-side handoff，同时保持 evaluation certification BLOCKED。

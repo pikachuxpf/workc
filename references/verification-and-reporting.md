@@ -222,7 +222,11 @@ repair_disposition = NO_FURTHER_REPAIR_REQUIRED_ENVIRONMENT_HANDOFF
 
 完成、返修或作业交付自检时，必须使用 [../assets/qa_report.template.md](../assets/qa_report.template.md) 生成或更新题包根目录 `qa_report.md`。即使 tests 无需修改，也必须 `mutation=report-only` 落盘报告；缺少本轮报告不得声明完成。
 
-报告至少包含：固定写入边界、实际 allowlist、零变化审计、正式规则来源、基线与 architecture、0917 结构 inventory、manifest/quality/prompt/checks/reward/runtime consistency、prompt path/status/digest、配对与弃用状态、三套身份计数和 raw-to-final mapping、issue 与建议/mandatory 区分、F/AR/AT/A/DR/DT/D 及两项指标、service/credential preflight、HTML evidence、LLM≤40%复算、四负控、三分归因、run freshness、post-trajectory 环境事件、四类人员/阶段状态、差异和限制。不得写秘密值。
+最终差异冻结后，完成/返修/作业交付自检必须执行 [pre-delivery-qa-fusion.md](pre-delivery-qa-fusion.md) 的 C1–C4：唯一 canonical V1 入口、独立设计/载体覆盖复审、独立 expected-value 复算，以及计数/issue/freshness/status 平账。`test_delivery_handoff_ready=YES` 要求四门均已执行且为 `PASS`；任一门 `NOT_RUN/FAIL/BLOCKED` 时 handoff 为 `NO/BLOCKED`。四门 PASS 仍不替代 V2+ evaluation certification。若复审或复算引发任何 tests 或结论证据变化，旧闭环全部 `STALE`，回到受影响 P gate，并从 C1 完整重启；不得只补跑失败项或跨 run 拼接。独立 reviewer 不得冒充人工或技术负责人签字。
+
+报告至少包含：固定写入边界、实际 allowlist、零变化审计、正式规则来源、基线与 architecture、0917 结构 inventory、manifest/quality/prompt/checks/reward/runtime consistency、prompt path/status/digest、配对与弃用状态、三套身份计数和 raw-to-final mapping、issue 与建议/mandatory 区分、F/AR/AT/A/DR/DT/D 及两项指标、service/credential preflight、HTML evidence、LLM≤40%复算、四负控、三分归因、run freshness、post-trajectory 环境事件、C1–C4 闭环与重启轮次、四类人员/阶段状态、差异和限制。不得写秘密值。
+
+C1 的 canonical V1 入口从当前题包实际 validator/self-test/runner 识别，不全局规定文件名。它必须是一次完整、可复核、fail-closed 的运行；只有多个散脚本的局部 PASS 时，C1 仍为 `BLOCKED/NOT_RUN`。C2/C3 必须由与当前修复实现相独立的复审路径完成，并记录 reviewer、scope、输入 digest 和发现；复审导致修改后必须从 C1 重启。
 
 交付结论拆成：
 
