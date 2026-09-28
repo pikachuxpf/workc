@@ -307,6 +307,19 @@ canonical 期望为唯一 `tests/criteria_manifest.yaml`；`tests/process`、`te
 | blocker 存在但 overall/evaluation 写 PASS | C4 FAIL；只降级受影响状态，摘要不能覆盖底层 evidence |
 | 正式 runner 配置足以闭合静态 owner/writeability 契约，但实际 mount provenance 与 candidate run 未授权/未跑 | C2 可 PASS；C1–C4 及其他静态交付门均 PASS 时可声明 tests-side handoff，`evaluation_certified=NO/BLOCKED` |
 | 静态 owner/writeability 契约本身无法建立 | P1/P2/C2 `BLOCKED`；handoff 与 evaluation 均不可认证 |
+| C2a 审计开始时 TESTS_HASH 与同轮 C2/C3 报告指纹不一致 | 停止并报错（错版对拍）；统一版本后重启审计，不生成错位报告 |
+| C2a 只抽查部分判据构造反例 | 违反穷举原则；必须每条 float 判据 under/over 双向各至少一个反例 |
+| C2a 反例只写"看起来是浅代理"未列反例本体与预测分 | 拒收（未审）；静态推演也必须列输入、期望分、推导过程 |
+| 硬编码/正则/`==` 判据只测了 1 个等价写法 | 等价解枚举门未过；≥3 个合法等价形态（引号/变量名/中英同义/位置置换）全跑完才能声明无 over-strict |
+| 生成式对象 twin 双反例分差 <0.3 | 浅代理（SHALLOW_GENERATIVE）；建议改 likert judge 承接 |
+| resources 无可抽正反例载体，twin 无法从载体构造 | 记 W（载体不足）跳过，不虚报不升 E |
+| 对照组/检查者自产证据通过判分 | 不证明判据正确；形态对拍以真实 rollout 样本为准，自产证据形态可能不符 |
+| 判分只验数量/哈希（替换成员保条数仍满分） | 数量/哈希代理身份缺陷；须附加成员身份/字段值/来源验证 |
+| agent 合规但 user 未复述/环境未释放依赖条件被扣分 | 反向惩罚合规行为缺陷；反查 instruction/policy 无明文强制即 E |
+| 判据硬约束（阈值/门数/must-call）与 policy 明文冲突或无推导路径 | policy-判据对拍缺陷；manifest 自证不作挡 E 依据 |
+| partial_credit 子分和 0.95 靠 min(1.0) 掩盖，或子条件互斥构造不出满足 fixture | 子分完整性缺陷；任何合规 agent 拿不到满分即 E |
+| 子代理复审报告体量 < 同批中位数 30% | 拒收重跑；缩水报告 = 没逐判据读代码 |
+| 随机抽 3 条 @criterion 验证复审发现与代码不符 | 拒收并要求打开全部函数体 |
 | `.pipeline` 字符串引用出现在 tests/report | 在可写范围删除引用并重跑；冻结残留只记录路径，不读取或转述其内容 |
 | Dockerfile 写 `harbor-rewardkit==0.2.0`（精确 pin） | 版本契约 PASS；run 记录实际解析版本 |
 | Dockerfile 写 `0.2.*`/`>=0.2.0`/裸包名 | version-drift issue；Dockerfile 冻结则 `OUT_OF_SCOPE/BLOCKED` 移交，不顺手改 |

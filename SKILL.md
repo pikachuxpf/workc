@@ -40,6 +40,7 @@ P0 范围卡
 → C1 canonical V1 hard gate
 → C2 独立设计/载体覆盖复审
 → C3 独立 expected-value 复算
+→ C2a 逐判据对抗反例审计
 → 更新根目录 qa_report.md
 → C4 QA 平账与状态对账
 → 交付退出门与差异审计
@@ -84,9 +85,12 @@ P0–P4 约束返修过程；C1–C4 负责在最终差异冻结后发现遗漏�
 | C1 Canonical V1 Hard Gate | 从真实 runner/validators/self-tests 识别唯一 canonical V1 入口；覆盖适用 schema/TOML/YAML、identity、mapping、aggregation、carrier/path 和 fail-closed drift controls；命令、输入 digest、RC、输出与 scope 可复核 | 无唯一入口、局部脚本拼接、validator 未实际阻断或任一项失败：V1 不通过，不得把局部 PASS 写成 tests-side 完整自检 |
 | C2 Independent Design / Carrier Re-audit | 由未参与当前修复的独立 reviewer 从正式 claim 重新审查 score identity、正反条件、authority/producer/writeability、source carrier 清单、manifest/runtime closure 与遗漏角度；只读复审且不继承“已修复”结论 | 发现新 defect 或载体/claim 漏项：登记 issue，回到受影响的 P1–P4 修复；最终差异改变后此前 C1–C4 全部 `STALE` 并从 C1 重启 |
 | C3 Independent Expected-value Recalculation | 对 checks 常量、manifest/quality 文本、边界值、集合、计数、权重与总 reward，从正式非禁读载体独立复算并与实现、报告三方比对；无法独立推导写 `BLOCKED/N/A` | 不一致不能用 Oracle/GT/judge 分数覆盖；修复后重跑 C1、C2、C3，所有引用旧 digest 的结果失效 |
+| C2a Per-criterion Adversarial Counter-example Audit | 对**每条** float 判据穷举构造最小反例（不抽查）：under-strict（该低分得高分）与 over-strict（该高分得低分）双向各至少一个，优先实跑、不可行才静态推演并注明；含等价解枚举门（硬编码/正则/`==` 判据 ≥3 个合法等价形态，任一丢分即 over-strict）与生成式双反例门（深内容 vs 关键词堆砌分差 <0.3 = 浅代理，改 likert） | 任一反例证明判据放水/错杀 → 该判据 issue，修复后从 C1 重启；静态推演不列反例本体与预测分 = 未审 |
 | C4 QA Accounting / Status Reconciliation | 机械核对 `R0/T0/N0`、`F/AR/AT/A/DR/DT/D`、issue 状态、run freshness、三分归因、C1–C3、allowlist diff 与四个交付状态；结论只由底层证据派生 | 任一计数、issue、run、blocker 或状态矛盾：报告不闭合；只降级受影响结论，不以多数通过或摘要覆盖底层 evidence |
 
 独立 reviewer 可以是未参与当前修复的子代理或人员，但其结果不等于 `human_review_status` 或 `technical_lead_review_status`。修改后必须“重启闭环”，不能只补跑失败项后与旧 PASS 跨 run 拼接。
+
+**独立/子代理复审的强制产出下限**：C2/C3/C2a 委托给子代理或自审时，验收前必须核对产出下限，任一门失败即拒收重跑，不得默默接受——(a) C2a 对每条 float 判据给出 under-strict 与 over-strict 各至少一个反例（输入+期望分+实际分），实跑或注明静态推演及推导过程，并发布"实跑覆盖 M/N"与"等价解覆盖 M/N"统计；(b) 报告体量低于同批中位数 30% 即拒收——缩水报告是"没逐判据读代码"的最强信号；(c) 随机抽 3 条 `@criterion` 对照 `checks.py` 函数体验证发现是否属实，任一不符即拒收并要求打开全部函数体；(d) 全表零反例时重新逐判据检查，确属穷尽必须逐条说明。规则文本不会自我执行，这些门是把规则变成验收标准的方式。
 
 #### Schema-safe manifest / validator placement
 
@@ -192,6 +196,11 @@ explicit_precedence | recast | resolution | reason
    - **过严（错杀）**：判分只做全文搜禁词、不分肯定/否定语境（”未泄露””没有影响”含禁词即判零）是缺陷；正式规则只要求语义结果时，不得把一种写法钉成唯一答案——恰好 N 行、特定变量名、必须含连续字符串”不受影响”等形态约束，只有正式规则明文规定该形态时才合法，否则等价正确写法必须同分。判分与 gold 的等价类（数量并列、同义表达、等价格式）在 P2 声明，未声明等价类而错杀即 issue。
    - 每个匹配型 check 交付前必须跑**等价表达正控**（换一种合规写法应得满分）与**位置/语境负控**（token 在错误位置或否定语境应得 0 分或按规则计分），两个探针缺一即不闭合；有限多解题的等价表达正控必须覆盖至少两个不同的合法解（多解正例夹具），只测代表解测不出单解钉死。
 2. **判分程序自身 bug（整题零分型）**：解析器必须对真实产物结构做**双向覆盖断言**——解析成功且提取到非空目标集合。实测缺陷：PPT 解析只遍历最外层 shape、组内文字全漏（必须递归进 group shape）；对话文件是 list 结构却按 dict 读取（必须按实际 JSON 结构分派，list/dict 各自处理）；文件名含非 ASCII/编码漂移导致基线对不上（路径匹配必须规范化编码后比较，不得裸 `==`）。解析器必须配**结构反例**（group 内文字、list 型对话、乱码文件名夹具）；解析结果为空/None 时 fail closed 记 0 并单独归因，不得静默按通过或把异常吞成候选 0 分（三分归因见“验证、新鲜度与归因”）。
+   - **真实形态对拍优先于自造夹具**：检查者/对照组自产的证据（solve.sh 自己写的 conversation.json/trajectory）通过判分不证明判分正确——自产证据形态与 runner 真实输出形态可能不同（dict vs 扁平 list、`tool_calls[*].function.name` 嵌套 vs 顶层字段、文件名实际拼写）。判分读取的每个 evidence 文件，形态对拍必须以**同批真实 rollout 产物样本**为准（WorkC 内只能用 runner/verifier 正式导出或挂载的样本；`.pipeline/` 仍绝对禁读，需要其内容时按环境事件移交）；对照组自洽永远不能凌驾真实样本不匹配。取不到真实样本时，形态兼容性结论降级为"未验证"，不得据此给判据出 PASS。
+   - **数量/哈希代理身份**：`len(x)==N`/`count==N`/`sum==X`/`hash==h`/`set==set` 类判据只验数量或全量哈希时，必须附加成员身份/字段值/来源验证——构造"保留数量与哈希但替换成员"的最小反例（同条数换账号、header hash 对但行内字段错配、来源镜像混入），放行即缺陷。豁免：数量只作先决 short-circuit 门、后续有完整身份验证。
+   - **反向惩罚合规行为**：agent 无控制权的条件（user 措辞/复述、环境释放时机、工具触发）不得成为扣分必要条件——构造"agent 完全合规但依赖条件未触发"的最小反例，扣分即缺陷；反查 instruction/policy 是否明文强制该条件，无明文即缺陷。
+   - **policy-判据对拍**：每个硬约束（阈值、门数、优先级、事实源、must-call、超时/间隔）必须能从 instruction+policy+resources 独立推导；找不到推导路径、或方向反/阈值不同/建议升必要/事实源冲突（如 policy 明写 binary 直接 command -v 而判据强制先查注册表、发布事实源用轨迹兜底而非网关操作）即缺陷。manifest 自证（manifest 声明该阈值）不作为挡 E 依据。
+   - **partial_credit 子分完整性**：子分总和必须 ∈ [0.99,1.01] 且封顶逻辑显式（0.95 之和靠 min(1.0) 掩盖即缺陷）；子条件不得互斥（构造"同时满足全部子条件"的最小 fixture，构造不出 = 判据设计矛盾，任何合规 agent 拿不到满分）。
 3. **标准答案（gold/期望值）自身错误**：期望值不是免检真值——C3 独立复算必须能推翻它。实测缺陷：正确 UTC 写法得 0.8、配错时区的反而满分（时区/单位/符号类期望必须用已知正确的参照算例交叉验证）；本机装了 zip 但期望写死”缺失”（环境依赖类期望值必须在目标环境实测推导，不得凭记忆/离线假设写死）。复算与 gold 冲突时：复算依据可复核 → 以复算为准登记 gold-defect issue；不可复核 → 该 claim `BLOCKED`，不得默认 gold 正确。
 
 规则质检未发现上述缺陷时，按漏检归档：区分”规则未覆盖”（补充本节对应探针与回归）与”规则有但未执行”（C2/C3 执行缺口），二者都在 qa_report 记录防复发动作。

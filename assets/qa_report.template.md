@@ -340,6 +340,18 @@ result_digest          = result artifact
 
 不得用 Oracle、nop、judge、ground truth 或历史题数值替代独立推导。无法独立推导时保持 `BLOCKED/N/A`。
 
+#### C2a 逐判据对抗反例审计
+
+- TESTS_HASH / 与同轮 C2/C3 指纹一致：{{digest；不一致即停止报错，不生成错位报告}}
+- 实跑覆盖 / 等价解覆盖：{{M/N 条 float 判据 ≥1 实跑反例；M/N 条硬编码判据 ≥3 等价形态；未实跑清单与理由}}
+- 宿主环境声明：{{bash/jq/docker/rewardkit 可用性；可能因宿主-容器差异失真的反例}}
+
+| angle_id | 方向 | 反例类型 | 构造输入 | 期望分 | 实际分 | 实跑/静态推演 | 结论 / issue refs |
+|---|---|---|---|---|---|---|---|
+| {{ID}} | {{under-strict / over-strict / 可达性 / 环境期望 / SHALLOW}} | {{占位/伪回执/同数量异身份/等价形态/twin/乱码路径/…}} | {{最小反例}} | {{value}} | {{value}} | {{run/推演}} | {{E/W/通过 + refs}} |
+
+静态推演必须列反例本体与预测分，否则视为未审。全表零反例时重新逐判据检查，确属穷尽须逐条说明。
+
 #### C4 QA 平账、状态对账与重启轮次
 
 | cycle_id | frozen-input/diff digest | C1 | C2 | C3 | findings / changed evidence | restart_from | final disposition |
