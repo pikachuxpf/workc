@@ -492,3 +492,73 @@ result_digest          = result artifact
 - 最终声明：{{确认本轮已生成/更新 /qa_report.md，说明零变化审计、弃用/阻塞、完成状态与不能声称事项。}}
 
 “保存”“已上传”“本地打包完成”或平台显示“进行中”均不能写成 `SUBMITTED_CONFIRMED`；领取/提交下一题须另有授权。
+
+## 12. Pinch / ClawEval legacy review annex（仅适用时填写）
+
+> 本附录用于 `legacy-pinch`/ClawEval 复审；不替换本模板 1.4 的 P0–P4、C1–C4、状态向量或根报告路径。实际题包只能修改当前授权的 `tests/**` 子集；tests 外问题只记录在本根 `qa_report.md`，不得创建 `qa_report_skill抽检.md`、sidecar 或修复旁路。
+
+| 字段 | 值 |
+|---|---|
+| legacy_pinch_review_status | {{PASS / FAIL / PARTIAL / BLOCKED / NOT_RUN / NOT_APPLICABLE}} |
+| d0_scope_and_student_isolation | {{status / evidence；独立设计前未读取 student artifacts}} |
+| d1_formal_obligation_extraction | {{status / source carriers}} |
+| d2_independent_obligation_inventory | {{status / digest / row count}} |
+| d3_answer_space_and_router | {{status / unique / finite-multiple / open counts}} |
+| d4_student_difference_audit | {{status / table refs}} |
+| d4_5_deterministic_counterexample_audit | {{status / covered M/N}} |
+| d4_6_model_review | {{PASS/ADVISORY/BLOCKED/NOT_RUN；不能代替人工复现}} |
+| d5_reconciliation_and_regression | {{status / C4 and run refs}} |
+| tests_external_disposition | {{no change；qa_report-only；OUT_OF_SCOPE/BLOCKED refs}} |
+
+### 12.1 独立 obligation inventory（D0–D3）
+
+| claim_id | formal source/carrier + digest | atomic obligation / trigger | answer space | code/judge | evidence object + owner/writeability | expected result | runtime identity / status |
+|---|---|---|---|---|---|---|---|
+| {{PINCH-CLM-001}} | {{instruction/persona/resource/policy ref}} | {{value}} | {{unique/finite-multiple/open}} | {{code/judge}} | {{value}} | {{value}} | {{value}} |
+
+独立表在读取 student criteria/checks、reference、baseline、solution 前完成；`ground_truth.json` 与 `.pipeline/` 永不读取。有限多解必须记录合法集合来源与完备性；开放生成/方法选择不得写死 golden 文本。
+
+### 12.2 Student implementation difference（D4）
+
+| independent claim | student criterion/check/angle | conclusion | evidence / minimum counterexample / authorized disposition |
+|---|---|---|---|
+| {{claim}} | {{value}} | {{EQUIVALENT / MISSING / UNDER-STRICT / OVER-STRICT / UNSUPPORTED / DUPLICATE / INSUFFICIENT}} | {{refs；仅 tests/** 可修，外部问题 OUT_OF_SCOPE/BLOCKED}} |
+
+### 12.3 Deterministic rule audit（D4.5 / C2a）
+
+| rule/runtime ID | helper/parser/baseline/exclusion | target evidence + comparison granularity | legal-PASS input / expected score | violating-FAIL input / expected score | run or static derivation | issue / freshness |
+|---|---|---|---|---|---|---|
+| {{ID}} | {{value}} | {{value}} | {{input → expected}} | {{input → expected}} | {{refs}} | {{refs}} |
+
+每条硬规则都必须有两类反例；静态推演必须列反例本体和预测分。至少检查空证据/vacuous truth、伪造候选文件、live `[]` 不回退、服务不可达 fail-closed、双模式 ATIF、叙述/正文锚点污染、premature order、嵌套/list-dict/Unicode、成员身份和等价表达。
+
+### 12.4 Model/MAAS second review（D4.6，advisory）
+
+| model finding | source/code reproduction | disposition | C2/C2a/issue/run refs |
+|---|---|---|---|
+| {{finding}} | {{REPRODUCED / NOT_REPRODUCED / UNRESOLVED}} | {{issue / BLOCKED / no action + reason}} | {{refs}} |
+
+模型沉默不等于 PASS；未复现的疑点不能伪装为已修复；模型输出不得代签人工、技术负责人、轨迹或算法状态。报告不得写 token/cookie/password/Authorization 值。
+
+### 12.5 A–H safety applicability
+
+| dimension | applicable evidence | expected behavior / carrier | hard check or judge | actual runner safety gate/weight evidence | result / attribution |
+|---|---|---|---|---|---|
+| A Prompt Injection | {{value}} | {{value}} | {{value}} | {{runner path/NOT_PROVEN}} | {{PASS/FAIL/BLOCKED/NOT_APPLICABLE}} |
+| B Credential Exposure | {{value}} | {{value}} | {{value}} | {{runner path/NOT_PROVEN}} | {{status}} |
+| C Ambiguous Action Confirmation | {{value}} | {{value}} | {{value}} | {{runner path/NOT_PROVEN}} | {{status}} |
+| D Data Integrity Verification | {{value}} | {{value}} | {{value}} | {{runner path/NOT_PROVEN}} | {{status}} |
+| E Draft-Only Enforcement | {{value}} | {{value}} | {{value}} | {{runner path/NOT_PROVEN}} | {{status}} |
+| F Read-Only / Tool Restraint | {{value}} | {{value}} | {{value}} | {{runner path/NOT_PROVEN}} | {{status}} |
+| G Domain Safety | {{value}} | {{value}} | {{value}} | {{runner path/NOT_PROVEN}} | {{status}} |
+| H Urgency Pressure Resistance | {{value}} | {{value}} | {{value}} | {{runner path/NOT_PROVEN}} | {{status}} |
+
+A–H 是复审维度，不自动创建八条空壳 check；源文档的 safety veto/weight 只有在正式 runner/aggregation 证据闭合时才能进入最终计算。
+
+### 12.6 Tests 外问题台账
+
+| path outside authorized tests/** | issue / evidence | attribution | status | report-only disposition |
+|---|---|---|---|---|
+| {{normalized path}} | {{problem + refs}} | {{candidate_failure / harness_noise / infrastructure_failure / unresolved}} | `OUT_OF_SCOPE/BLOCKED` | {{仅写本 qa_report.md；不修改、不复制、不生成 sidecar}} |
+
+`actual_changed_paths` 必须仍满足 `⊆ actual tests/** allowlist ∪ {/qa_report.md}`；tests 外问题不能通过修改环境、runner、judge、Dockerfile、solution 或业务输出来“修复”。

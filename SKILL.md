@@ -299,3 +299,52 @@ explicit_precedence | recast | resolution | reason
 WorkC Skill 自身维护、GitHub 发布或 push 转交 skill-creator。题包交付只允许已授权的 `tests/**` 子集、根目录 `qa_report.md` 和题包外的交付包；内部规范原文、题目答案、缓存、日志、运行产物和真实 env-file 不得进入交付。
 
 最终回复必须先说明是否真正完成作业，再列实际 test allowlist 外零变化、QA 报告状态、验证范围、阻塞项和外部提交实际状态。
+
+## 11. Pinch / ClawEval legacy review crosswalk（增量，不改变 WorkC 主流程）
+
+`E:\\work-C\\doc\\质检SKILL\\pinch_qa_new` 的 D0–D5 是 Pinch/ClawEval 的内层复审方法，不是 WorkC 的第二套权限或第二套交付门。WorkC 始终优先执行既有：
+
+```text
+P0 → P1 → P2 → P3 → 修改实际授权的 tests/** → P4 → C1 → C2 → C3 → C2a → qa_report.md → C4 → 交付退出门
+```
+
+在适用的 `legacy`/`legacy-pinch` 题目中，将 D0–D5 映射如下：
+
+| Pinch 阶段 | WorkC 映射 | 强制含义 |
+|---|---|---|
+| D0 隔离 student answer | P0 Scope Card / P1 输入边界 | 先锁定正式 task carrier、实际 tests allowlist、禁读项和 execution ceiling；完成独立设计前不得用 student criteria/checks、reference、baseline 或 solution 反推要求；`ground_truth.json` 与 `.pipeline/` 仍绝对禁读。 |
+| D1 抽取任务义务 | P1 Baseline Contract | 从 instruction、persona、正式 resources/fixtures 和适用 policy 独立列出显性义务、隐性条款、关键数值、工具端点/参数、输出文件/字段及其正式来源。 |
+| D2 建立独立覆盖表 | P2 Claim–Evidence–Scorer Topology | 每个原子 claim 记录答案空间、判定方式、evidence 对象、producer/ownership、触发条件、runtime identity 和归因；不能以已有 criterion 数量代替覆盖推导。 |
+| D3 答案空间与 code/judge 路由 | P2/P3 | 唯一且可复算的事实才用 deterministic rule；有限多解必须覆盖完整合法集；开放生成、方法选择和语义质量交允许的 judge。参考实现、关键词、行数、命名或单一示例不得钉成唯一答案。 |
+| D4 差异核对 | P3 / C2 | 在独立设计冻结后读取 student tests，逐项标记等价覆盖、漏覆盖、过松、过严、题面外新增、重复或证据不足；只能在授权 `tests/**` 内修复。 |
+| D4.5 确定性规则反例审计 | P3 Mutation Matrix / C2a | 每条 score-bearing deterministic rule 都要下钻 helper、parser、baseline、遍历和排除分支，并给出合法-PASS 与违规-FAIL 最小反例；静态推演也必须列输入、期望分和推导。 |
+| D4.6 模型第二审 | C2/C2a advisory evidence | MAAS/模型只提供疑点线索；每个疑点必须回到正式题面、源码和 evidence 人工复现或标 `UNRESOLVED/BLOCKED`。模型未提及不代表通过，模型输出不能代签人工/负责人状态。 |
+| D5 收口与回归 | C4 / 交付退出门 | 对账身份、issue、freshness、归因、allowlist 与 readiness；任一 tests 或结论证据变化都按 restart-on-change 从最早受影响门重跑，不跨轮拼接 PASS。 |
+
+### 11.1 Pinch 安全 A–H 仅按适用性纳入
+
+Pinch 资料中的安全复审维度可用于建立 claim 和反例，但名称本身不改变实际评分聚合：
+
+- **A** Prompt Injection（提示注入防御）
+- **B** Credential Exposure（凭据暴露）
+- **C** Ambiguous Action Confirmation（歧义操作确认）
+- **D** Data Integrity Verification（数据完整性验证）
+- **E** Draft-Only Enforcement（仅草稿限制）
+- **F** Read-Only / Tool Restraint（只读/工具克制）
+- **G** Domain Safety（领域安全/专业风险）
+- **H** Urgency Pressure Resistance（紧急压力抵抗）
+
+只在 task/materialization、policy、runner 或正式 profile 证明该维度适用时登记 `safety_checks`、judge rubric 或 reference expectation；实际 safety veto、weight、Likert/float 或 binary 语义必须沿真实 runner/aggregation 复核。源文档的“一票否决”公式不得未经 runner 证据推广到 legacy、0917 或 hybrid 全部题目。
+
+### 11.2 tests 外发现只进根报告，不形成修复旁路
+
+Pinch 的“直接修复”语气不能扩大 WorkC 写权。实际题包中：
+
+- 只能编辑当前明确授权的 `tests/**` 子集；`tests/judge.py`、`test.sh`、instruction、environment、task.toml、solution、scripts、Dockerfile、grader、业务输出及其他 tests 外路径仍按实际 profile/allowlist 冻结。
+- tests 外发现的问题只写根目录 `qa_report.md`，标注 `OUT_OF_SCOPE/BLOCKED` 或对应的 candidate/harness/infrastructure attribution；不得创建 `qa_report_skill抽检.md`、sidecar、staging、补丁副本或其他报告旁路。
+- tests 无需变化时使用 `mutation=report-only`；纯咨询仍 `chat-only`，不借报告伪装成已完成作业。
+- 修复 Skill 自身时可改本 Skill 包文件，但这不改变任何 WorkC 题包的 tests-only 权限。
+
+### 11.3 Pinch 辅助脚本不是 WorkC authority
+
+Pinch 的 `audit.py`、`static_check.py`、`deep_check.py`、`rewardkit_check.py`、`llm_rule_review.py` 和 `run_tests_sandbox.py` 可作为历史/外部辅助线索，但不能替代 WorkC canonical runner、schema-safe validator、runtime identity、evidence ownership、V0–V5、freshness 或 C1–C4。特别注意：源脚本的 sidecar 报告路径、启发式 RewardKit 路由、递归别名发现、task-specific deep formula、MAAS `token-env` 读取缺陷以及 sandbox Oracle fallback 文档/实现不一致，都不得进入 WorkC 的第二执行权威；所有相关限制写入 `qa_report.md`。

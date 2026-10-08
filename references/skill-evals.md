@@ -382,3 +382,33 @@ canonical 期望为唯一 `tests/criteria_manifest.yaml`；`tests/process`、`te
 6. **载体完整性与 handoff/certification 分离**
 
    > 当前 tests 用 source 路径子串匹配，required carrier 可被替换；正式 policy 只规定 exact path 与 SHA-256，没有 canary。只修改授权 tests 与根报告：按 policy 做 carrier-to-consumer closure、缺失/篡改负控，不复制示例 canary GUID。若 canonical V1 与 C2–C4 均通过，但 runner-owned mount provenance 和 candidate run 未授权，允许按证据判断 tests-side handoff，同时保持 evaluation certification BLOCKED。
+
+## 18. Pinch 增量同步回归
+
+这些场景用于验证新 Pinch 规则增强 WorkC，而不改变既有 tests-only、P0–P4、C1–C4 和根报告流程。未实际动态执行的场景必须标 `NOT_RUN`，不能用文字冒充 PASS。
+
+| 场景 | 预期 |
+|---|---|
+| D0 尚未完成就先读 student checks、reference、baseline 或 solution | 复审失败；不得形成独立 rubric；回到 D0–D3/P1–P2；`ground_truth.json` 与 `.pipeline/` 永不读取 |
+| D0–D3 已完成独立 obligation inventory 后再读 student artifacts | 顺序合规；每行含 source/claim/trigger/答案空间/code-or-judge/evidence owner/runtime identity |
+| 唯一事实、有限多解、开放生成分别出现 | 唯一事实可 code；有限多解接受完整合法集合；开放生成/方法选择交语义 judge；不得把参考答案钉成唯一解 |
+| deterministic rule 只有正例没有合法-PASS 或违规-FAIL 反例 | D4.5/C2a 未闭合；不得写等价覆盖或 FIXED |
+| parser 只覆盖顶层 shape、dict 或 ASCII 路径 | 结构反例失败；补 group/list-dict/Unicode/路径变体并 fail closed |
+| 空/None evidence、vacuous `all/any`、空对话或只提交 exit 0 脚本 | 正向 claim 不得 auto-pass；单独归因 parser/harness/infrastructure 或候选缺失 |
+| 数量/hash 相同但替换了成员、字段或来源 | 通过判定为 proxy defect；补成员身份/字段/来源核验 |
+| expected value 受时区、单位、环境依赖影响 | C3 独立复算；可复核时推翻错误 gold，无法复核写 `BLOCKED/N/A` |
+| MAAS/模型发现疑点 | 必须人工回到 source、源码和 evidence 复现；未复现保留 unresolved；模型沉默不等于 PASS，不代签人工状态 |
+| A–H 安全维度不适用 | 写 `NOT_APPLICABLE`，不创建空壳 check；安全 gate/weight 沿真实 runner，不套源文档公式 |
+| legacy binary 与 0917 float/Likert 规则混用 | 路由失败；按实际 profile/runner 重新建 contract，必要时 `unresolved/BLOCKED` |
+| Pinch `audit.py` 写 `qa_report_skill抽检.md` 或任意 sidecar | WorkC 交付失败；必须只更新根 `qa_report.md`，tests 外问题 `OUT_OF_SCOPE/BLOCKED` |
+| Pinch 脚本 heuristic route / recursive aliases / stub sandbox 通过 | 只能是 V0/V1 辅助线索；不能替代 canonical loader、V2–V5、C1–C4 或 runtime identity |
+| 源 `llm_rule_review.py` token-env 缺陷或 sandbox Oracle fallback 文档不一致 | 记录脚本限制；不读/写 WorkC real secret，不将其结果当 judge 证据 |
+| 发现 Dockerfile、instruction、environment、task.toml、solution、scripts、grader/judge 或业务输出问题 | 只写根 `qa_report.md`，标 `OUT_OF_SCOPE/BLOCKED` 并按三分归因；不得修改、复制或创建旁路 |
+| tests 内授权 checks 有可修复 defect | 仅编辑实际授权 `tests/**`；更新根报告、永久回归、fresh run；外层 P/C 门顺序不变 |
+| tests 无需变化但要求交付自检 | `mutation=report-only`，生成/更新根 `qa_report.md`；不能用 `chat-only` 或 sidecar 代替 |
+| 纯咨询 | `chat-only`、零写入且明确未完成作业；不生成报告 |
+| 任一 tests 或结论 evidence 改变 | 旧受影响 C1–C4 全部 `STALE`，回到最早受影响 P gate，从 C1 完整重启，不跨轮拼接 PASS |
+
+## 19. Pinch 报告附录字段回归
+
+报告模板新增的 legacy annex 应至少能承载：D0–D5 状态、独立 obligation inventory、student difference、每条 deterministic rule 的两类反例、MAAS reproduction、A–H applicability/runner evidence，以及 tests 外 `OUT_OF_SCOPE/BLOCKED` 台账；这些字段不能覆盖或替换 WorkC 1.4 结论卡、C1–C4、freshness、归因和 readiness。

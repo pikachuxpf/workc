@@ -123,3 +123,13 @@ Manifest 常见顶层字段为 `version`、`score_range`、`dimensions`、`crite
 应触发：明确 WorkC/ClawEval/PinchBench/Seal/RewardKit 单题，并要求测试侧完成、返修、作业验证、运行、强制 QA 报告或交付。
 
 不应触发：业务实现、普通 pytest 修复、泛指 judge、学校考试题、一般 ZIP、普通 QA 报告或非题包前端开发。即使业务目录中存在 `tests/`，只要请求目标是页面、服务或业务产物，也不使用 WorkC 完成它。
+
+## 10. Pinch 辅助发现与 WorkC 权威的关系
+
+`pinch_qa_new` 中按文件名、正则、递归 glob、装饰器文本或报告脚本做的发现，只能作为候选信号或 V0/V1 辅助，不能证明 WorkC 的 architecture、评分身份或 runtime closure。实际 profile 必须沿正式 `test.sh`/runner、import/registry、scorer target、结果与聚合链确认：
+
+- canonical path、duplicate/case-collision、schema-safe validator、实际 loader 和 runtime loaded path/digest 优先于 Pinch 脚本的 heuristic route；
+- `hybrid` 与 `unresolved` 不得任选一套、不补空文件、不从 manifest 猜身份，必要时对受影响 claim fail closed；
+- Pinch `audit.py` 的 sidecar/任意报告路径不适用于 WorkC，题包完成/返修/交付自检仍只能更新根 `qa_report.md`；
+- `rewardkit_check.py`、stub sandbox 或模型第二审都不能替代 V2–V5、证据所有权、freshness 和 C1–C4；
+- tests 外发现只进根报告并标 `OUT_OF_SCOPE/BLOCKED`，不得借辅助脚本写副本、修改 runner 或扩大题包写权。

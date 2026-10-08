@@ -99,3 +99,73 @@ AI 草拟的 rubric、test、expected value、judge verdict 和 QA 摘要不得�
 先沿 `test.sh` 确认 pytest、CTRF、class/tier 权重、judge cache 和返回码传播。import/collect 会执行模块顶层代码，属于 V2 而非纯静态。类名只有在 runner 映射或冻结规则要求时不可改；不得新增 runner 不认识的 tier。
 
 Oracle/nop 使用全新、隔离的 output、audit、conversation、run 和 judge cache。修改 rubric/test/judge prompt 后旧结果失效，必须重跑受影响完整范围。
+
+## 9. Pinch / ClawEval 增量复审层（legacy-pinch）
+
+本节吸收 `pinch_qa_new` 的新质检方法，但不替换前文的 WorkC legacy 契约。固定顺序仍是 WorkC 的 P0–P4、修改授权 tests、C1–C4；D0–D5 只用于在该流程内做更细的独立设计和反例复审。
+
+### 9.1 D0–D5 与 WorkC 门的对应
+
+| 阶段 | 做什么 | 对应 WorkC 门 |
+|---|---|---|
+| D0 | 隔离 student answer，确认 task/materialization、实际 tests allowlist、V0–V5 上限和禁读项。 | P0/P1 |
+| D1 | 只读 instruction、persona、正式 resources/fixtures、policy 和 runner contract，逐项抽取显性义务、隐性条款、关键数值、工具端点/参数、输出文件/字段。 | P1 |
+| D2 | 建立独立 obligation inventory，冻结后才读 student criteria/checks。 | P2 |
+| D3 | 先判答案空间，再选 code/judge：唯一事实、有限多解、开放生成/方法选择分别处理。 | P2/P3 |
+| D4 | 按独立义务对照 student 实现，区分等价覆盖、漏覆盖、过松、过严、题面外新增、重复和证据不足。 | P3/C2 |
+| D4.5 | 对每条 deterministic rule 下钻 helper/parser/baseline/排除分支，构造合法-PASS 与违规-FAIL 双反例。 | P3/C2a |
+| D4.6 | 使用模型或 MAAS 做六视角疑点发现，之后逐项回到源码、正式来源和 evidence 复现。 | C2/C2a advisory |
+| D5 | 运行适用的 V0–V5、更新回归和 `qa_report.md`，平账并处理 freshness。 | P4/C4 |
+
+独立 obligation row 至少包含：
+
+```text
+claim_id | formal source/carrier | atomic obligation | trigger/applicability
+answer_space(unique/finite-multiple/open) | code-or-judge | evidence object
+producer/ownership/writeability | runtime identity | expected result | attribution
+```
+
+完成 D0–D3 前，不得读取 student criteria/checks、参考 tests、baseline 或 solution 来收窄答案。`ground_truth.json` 和 `.pipeline/` 无论如何都不能读取或引用。若某个 tests 外问题是唯一阻塞原因，只在根 `qa_report.md` 记录 `OUT_OF_SCOPE/BLOCKED`，不修改其文件。
+
+### 9.2 答案空间与判定器可靠性
+
+- 只有题面或稳定输入使结果唯一、可定位且可复算时，才写 code rule；固定字段、精确值、封闭完整枚举、固定 schema/path/hash 属于此类。
+- 有限多解必须接受完整合法集合或可验证成员谓词，不能把参考答案的一种水果、文案、命名或实现路线钉成唯一解。
+- 开放生成、报告/总结/根因/建议、方法选择和自然语言纠正交由允许的语义 judge；prompt 描述正确语义，不列举一份 golden 原文。
+- 代码必须从目标字段/对象/表格/调用记录解析，不能用全文裸搜词数、文件存在、`exit 0`、数量、stem、marker 或单个 hash 代替目标事实。数量/哈希只能作先决门，除非另有成员身份/字段值/来源核验。
+- 解析器必须覆盖实际 evidence 的嵌套/group、list/dict、Unicode/编码和路径变体；空/`None`/异常解析必须 fail closed 并单独归因，不能吞错或按通过处理。
+- C3 对 expected value、公式、单位、时区、依赖和环境能力独立复算；可复核的复算结果可以推翻错误 gold，无法复核则 `BLOCKED/N/A`，不猜数。
+
+### 9.3 D4.5 确定性规则反例表
+
+每条 score-bearing deterministic rule 在可标记“等价覆盖”前，至少填写：
+
+| rule | helper/parser/baseline/排除分支 | 目标 evidence 与比较粒度 | 合法-PASS 最小反例 | 违规-FAIL 最小反例 | 实跑/静态推演 | issue/run/freshness |
+|---|---|---|---|---|---|---|
+| {{ID}} | {{具体函数/分支}} | {{对象/字段/内容/来源}} | {{不同于参考但合规的输入与期望分}} | {{最小违规输入与期望分}} | {{refs/推导}} | {{refs}} |
+
+必须特别覆盖：空证据集、vacuous `all/any`、伪造 agent-writable 文件、live service 正常返回 `[]`、service 不可达/无效载荷、叙述-only 动作、配置正文锚点污染、premature order、嵌套对象、list/dict、Unicode 路径、数量相同但成员替换、等价 API/工具形态和否定语境。没有两类反例时只能写 `EVIDENCE_INSUFFICIENT/BLOCKED`，不能写等价覆盖。
+
+### 9.4 D4.6 模型第二审（advisory）
+
+Pinch 的六个 review lens 可作为疑点清单：对象绑定/精确计数、baseline/保留内容、输入域/解析遍历、逃逸与隐私、弱代理语义、规则契约。模型输出不是判定结果：
+
+1. 每条疑点必须由人工回到正式 source、实现和 evidence 复现；
+2. 能复现的进入 issue/P3 mutation matrix，并补永久回归；
+3. 不能复现的保留 `UNRESOLVED/BLOCKED` 处置和原因；
+4. 模型未提到的 rule 仍必须完成 D4.5，沉默不等于 PASS；
+5. 不得把模型输出当作 `human_review_status`、`technical_lead_review_status` 或算法验收签名。
+
+不得把源 `llm_rule_review.py` 的 token 参数、任意输出路径或模型名称直接写入 WorkC secrets、题包或报告秘密值。WorkC judge 仍按本 Skill 第 10 节处理。
+
+### 9.5 Pinch A–H 安全复审
+
+按适用性检查以下维度：A Prompt Injection、B Credential Exposure、C Ambiguous Action Confirmation、D Data Integrity Verification、E Draft-Only Enforcement、F Read-Only/Tool Restraint、G Domain Safety、H Urgency Pressure Resistance。对适用维度记录触发证据、期望行为、硬 check/judge/reference carrier、producer/ownership 和最小正反例；不适用写 `NOT_APPLICABLE`，不能为凑齐八类添加空壳 check。
+
+源安全规范中的 veto、weight 和“最终安全得分”公式只有在当前正式 runner/aggregation 明确实现且可复核时才适用。legacy binary、0917 float/Likert 和其他 profile 不得混用；实际 safety 结果沿 runner 链独立核对。
+
+### 9.6 源脚本限制与 tests-only 处置
+
+`pinch_qa_new/scripts/` 下的 `audit.py`、`static_check.py`、`deep_check.py`、`rewardkit_check.py`、`llm_rule_review.py`、`run_tests_sandbox.py` 不复制进 WorkC。它们存在以下不能越权的限制：audit 的 sidecar/任意报告路径、启发式架构分流、rewardkit checker 的递归别名/regex 发现、inventory-specific deep formula、MAAS token-env 读取缺陷、sandbox 文档声称但实现缺失的 Oracle fallback，以及 stub judge 不能证明语义正确。它们最多作为 V0/V1 线索，不能替代真实 loader、schema-safe validator、V2–V5、evidence ownership、freshness 或 C1–C4。
+
+任何要求改 instruction、environment、task.toml、solution、scripts、grader/judge、Dockerfile、业务输出或其他 tests 外文件的问题，都只在根 `qa_report.md` 记录路径、证据、归因和 `OUT_OF_SCOPE/BLOCKED`；不创建 sidecar、不复制副本、不将报告当作修复旁路。tests 无需改动时使用 `report-only`。
