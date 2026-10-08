@@ -40,9 +40,9 @@ P0 范围卡
 → C1 canonical V1 hard gate
 → C2 独立设计/载体覆盖复审
 → C3 独立 expected-value 复算
-→ C2a 逐判据对抗反例审计
+→ C2a 对适用的修改、影响或风险判据做反例审计
 → 更新根目录 qa_report.md
-→ C4 QA 平账与状态对账
+→ C4 对账适用的 issue、freshness、状态与差异
 → 交付退出门与差异审计
 ```
 
@@ -54,6 +54,8 @@ P0 范围卡
 - `delivery`：`chat-only` / `completed-assignment` / `full-package` / `platform-submit`；
 - `architecture`：`legacy` / `seal-rewardkit-0917` / `hybrid` / `unresolved`。
 
+**单题默认执行最小适用闭环**：锁定范围与 allowlist → 确认 profile、正式依据和实际加载链 → 检查与任务及变更相关的 claim/evidence → 仅修复已确认且在授权 `tests/**` 内的问题 → 执行已授权且受影响的验证 → 更新根报告并审计最终差异。P0–P4、C1–C4 的状态与 readiness 仍须如实对账；工作产物和审查深度按相关范围收敛，不要求对未受影响判据重复构造整套探针。完整逐判据审计、广泛动态运行、轨迹/平台交付和 profile 专项台账仅在任务目标、适用 profile、变更影响或具体风险触发时展开。适用检查未执行须记 `NOT_RUN/BLOCKED`，不适用须记 `NOT_APPLICABLE` 并说明依据；两者均不是 PASS，也不能满足其必需 readiness 门。
+
 候选运行、judge 和外部动作分别需要当前题目与用户授权。完整包只能写到题包外或用户明确指定的外部位置；打包不扩大写权，也不能替代 QA 报告。详细边界见 [routing-and-authority.md](references/routing-and-authority.md)。
 
 当前批次正式指令：评分容器运行 `harbor-rewardkit==0.2.0`，题包须统一适配并精确固定到该版本——0.2.0 与 0.2.1 对"装饰器自动注册后再显式注册"的处理不同，会影响准则数量与权重；`0.2.*` 等前缀写法视为未固定，本地验证与每个 run 都必须标注实际精确版本。规则细节见 [seal-rewardkit.md](references/seal-rewardkit.md) 的"7.0 RewardKit 版本固定"。
@@ -64,17 +66,17 @@ P0 范围卡
 
 | 门 | 编辑/认证前必须形成的最小产物 | 未通过时的处置 |
 |---|---|---|
-| P0 Scope Card | target、mutation、实际 tests allowlist、V0–V5 上限、delivery、禁读项、动态运行授权与隔离前提 | 超出范围或缺授权：停止该动作；冻结路径问题记 `OUT_OF_SCOPE/BLOCKED` |
-| P1 Baseline Contract | 正式载体与 precedence、architecture/真实加载链、canonical 结构、`R0/T0/N0`、runner/聚合、runtime loaded path/digest、冻结输入与 evidence root 的 owner/writeability | identity、结构或 runtime 不能可靠建立：不猜数，指标 `N/A`；不能做 profile-specific 修复 |
-| P2 Claim–Evidence–Scorer Topology | 每个 score-bearing identity 的 formal claim、触发条件、权威真值源、producer、候选可达/可写性、runtime ID、权重链、fallback 和三分归因 | 正向 claim 没有可信真值源、service 可达性或唯一 authority：该 claim `BLOCKED`，不能由候选日志/自述补足 |
-| P3 Invariant / Mutation Matrix | 受影响不变量、最小正反例、伪造/空集/服务失败等适用控制及其 expected result | 控制缺失、空集自证或 evidence 可伪造：不能标 FIXED 或认证 |
-| P4 Change-Impact / Freshness Ledger | 每次改动→受影响 claim、identity、validator、control、aggregation、必跑 run；所有引用 run 的 digest 与 freshness | 任一适用 run 旧、范围不足或来自不同环境拼接：`STALE/UNVERIFIED`，不能认证 |
+| P0 Scope Card | target、mutation、实际 tests allowlist、V0–V5 上限、delivery、禁读项、所需动态运行授权与隔离前提 | 超出范围或缺授权：停止该动作；冻结路径问题记 `OUT_OF_SCOPE/BLOCKED` |
+| P1 Baseline Contract | 任务所需正式载体与 precedence、architecture/加载链、相关身份基线、必要 runner/聚合与 runtime path/digest、冻结输入及相关 evidence owner/writeability | 结论必要的 identity、结构或 runtime 不能可靠建立：不猜数；受影响指标 `N/A`，依赖该事实的修复/认证不得 PASS |
+| P2 Claim–Evidence–Scorer Topology | 受影响及结论必要的 score-bearing identity 对应 formal claim、触发条件、authority、producer、候选可达/可写性、runtime ID、相关权重链、fallback 和三分归因 | 正向 claim 没有可信真值源或唯一 authority：该 claim `BLOCKED`，不能由候选日志/自述补足 |
+| P3 Invariant / Mutation Matrix | 适用不变量、已发现缺陷的最小正反例，以及与具体风险相称的伪造/空集/服务失败控制 | 适用控制缺失、空集自证或 evidence 可伪造：不能标 FIXED 或认证 |
+| P4 Change-Impact / Freshness Ledger | 本轮变更影响的 claim、identity、validator、control、aggregation、必要验证及相关 run digest/freshness | 适用 run 旧、范围不足或跨环境拼接：`STALE/UNVERIFIED`，不能认证 |
 
-P1 不是只记录一个总 hash：它必须足以重建“什么在运行、什么在计分、谁生产证据、候选能否改写”。正式 source 版本变化时新建 revision baseline，不覆盖旧基线。P2 的 evidence 只有三类：**verifier/authority-owned**（可建立真值）、**candidate-owned**（只能证明候选行为）、**infrastructure-owned**（不可用时归 infrastructure）。候选可写路径即使被 verifier 复制、重命名或加 hash，也不会变成独立真值。
+P1 不是只记录一个总 hash：它必须足以重建本轮结论涉及的“什么在运行、什么在计分、谁生产证据、候选能否改写”；完整认证时还须覆盖完整评分链。正式 source 版本变化时新建 revision baseline，不覆盖旧基线。P2 的 evidence 只有三类：**verifier/authority-owned**（可建立真值）、**candidate-owned**（只能证明候选行为）、**infrastructure-owned**（不可用时归 infrastructure）。候选可写路径即使被 verifier 复制、重命名或加 hash，也不会变成独立真值。
 
-P3 的不变量按受影响面选择，不要求盲跑大而无关的全量套件：范围隔离、source authority、topology/weight closure、正向非空性、live service 无回退、双模式 trajectory、锚点污染、归因和 report freshness 是常见集合。发现的每个 tests-side 缺陷在关闭前必须晋升为常驻回归：保留最小反例、正例、预期、issue ID、run ID 和 freshness；确实无法构造时维持 `BLOCKED`，不得写 `FIXED`。
+P3 仅展开与适用 score-bearing 规则、已发现缺陷或具体风险相关的最小反例；一项证据可同时满足多个对应控制，避免重复造相同探针。每个确认的 tests-side 缺陷在关闭前必须晋升为常驻回归：保留最小反例、正例、预期、issue ID、run ID 和 freshness；确实无法构造时维持 `BLOCKED`，不得写 `FIXED`。P4 记录受影响范围即可，不要求无变更的无关身份重复盘点。
 
-P4 的 `FRESH` 只在全部会影响结论的输入、runtime loaded path/digest 和 run scope 一致时成立。不得把不同 run 的局部 PASS 拼成完整认证。若 P0–P4 的强制行不完整，范围与报告可以支持 `test_delivery_handoff_ready`，但 `evaluation_certified` 必须为 `NO/BLOCKED`。
+P4 的 `FRESH` 只在全部会影响结论的输入、runtime loaded path/digest 和 run scope 一致时成立。不得把不同 run 的局部 PASS 拼成完整认证。P0–P4 静态交付契约、C1–C4 handoff 状态及 `test_delivery_handoff_ready` 条件仍按现行门槛执行；缩减证据范围不能将适用的 `NOT_RUN` 视为 `PASS`。`evaluation_certified` 另须满足其适用动态验证条件。
 
 ### 2.2 C1–C4 交付闭环（冻结差异后再认证）
 
@@ -82,19 +84,19 @@ P0–P4 约束返修过程；C1–C4 负责在最终差异冻结后发现遗漏�
 
 | 门 | 必须闭合的交付事实 | 失败/变更后的处置 |
 |---|---|---|
-| C1 Canonical V1 Hard Gate | 从真实 runner/validators/self-tests 识别唯一 canonical V1 入口；覆盖适用 schema/TOML/YAML、identity、mapping、aggregation、carrier/path 和 fail-closed drift controls；命令、输入 digest、RC、输出与 scope 可复核 | 无唯一入口、局部脚本拼接、validator 未实际阻断或任一项失败：V1 不通过，不得把局部 PASS 写成 tests-side 完整自检 |
-| C2 Independent Design / Carrier Re-audit | 由未参与当前修复的独立 reviewer 从正式 claim 重新审查 score identity、正反条件、authority/producer/writeability、source carrier 清单、manifest/runtime closure 与遗漏角度；只读复审且不继承“已修复”结论 | 发现新 defect 或载体/claim 漏项：登记 issue，回到受影响的 P1–P4 修复；最终差异改变后此前 C1–C4 全部 `STALE` 并从 C1 重启 |
-| C3 Independent Expected-value Recalculation | 对 checks 常量、manifest/quality 文本、边界值、集合、计数、权重与总 reward，从正式非禁读载体独立复算并与实现、报告三方比对；无法独立推导写 `BLOCKED/N/A` | 不一致不能用 Oracle/GT/judge 分数覆盖；修复后重跑 C1、C2、C3，所有引用旧 digest 的结果失效 |
-| C2a Per-criterion Adversarial Counter-example Audit | 对**每条** float 判据穷举构造最小反例（不抽查）：under-strict（该低分得高分）与 over-strict（该高分得低分）双向各至少一个，优先实跑、不可行才静态推演并注明；含等价解枚举门（硬编码/正则/`==` 判据 ≥3 个合法等价形态，任一丢分即 over-strict）与生成式双反例门（深内容 vs 关键词堆砌分差 <0.3 = 浅代理，改 likert） | 任一反例证明判据放水/错杀 → 该判据 issue，修复后从 C1 重启；静态推演不列反例本体与预测分 = 未审 |
-| C4 QA Accounting / Status Reconciliation | 机械核对 `R0/T0/N0`、`F/AR/AT/A/DR/DT/D`、issue 状态、run freshness、三分归因、C1–C3、allowlist diff 与四个交付状态；结论只由底层证据派生 | 任一计数、issue、run、blocker 或状态矛盾：报告不闭合；只降级受影响结论，不以多数通过或摘要覆盖底层 evidence |
+| C1 Canonical V1 Hard Gate | 对本轮适用的正式 schema/身份/映射/聚合/carrier 检查使用唯一 canonical V1 入口；范围由目标 profile 与变更影响决定 | 无唯一入口、局部脚本冒充完整入口、适用 validator 未实际阻断或任一适用项失败：V1 不通过；未执行不得写 PASS |
+| C2 Independent Design / Carrier Re-audit | 对本轮受影响及结论必要的 score identity、正反条件、authority/producer/writeability、carrier、manifest/runtime closure 和遗漏角度作独立只读复审；完整认证按全适用范围审查 | 发现新 defect 或遗漏：登记 issue，回到最早受影响的 P 门修复；实质差异改变后，所有依赖旧输入的闭环结果 `STALE`，从 C1 重新闭合 |
+| C3 Independent Expected-value Recalculation | 独立复算本轮相关的常量、边界、集合、计数、权重与 reward；完整认证覆盖其正式要求的全量范围 | 不一致不能用 Oracle/GT/judge 分数覆盖；修复后受影响的旧复算及闭环结果失效 |
+| C2a Applicable Adversarial Counter-example Audit | 对本轮修改、受影响或存在明确过松/过严风险的 score-bearing 判据，审计最小 under-strict 与 over-strict 反例；适用的等价解、对象身份和生成式检查按风险展开。无适用判据时记录 `NOT_APPLICABLE` 及依据 | 反例证明判据放水/错杀即登记 issue；适用控制缺少可复核实跑或静态推演时标 `BLOCKED/UNVERIFIED`，不得宣称通过 |
+| C4 QA Accounting / Status Reconciliation | 核对适用身份/issue 计数、freshness、三分归因、C1–C3 与 C2a 状态、allowlist diff 和四个交付状态；无适用计数时使用 `N/A` 并说明 | 任一计数、issue、run、blocker 或状态矛盾：报告不闭合；只降级受影响结论，不以多数通过或摘要覆盖底层 evidence |
 
-独立 reviewer 可以是未参与当前修复的子代理或人员，但其结果不等于 `human_review_status` 或 `technical_lead_review_status`。修改后必须“重启闭环”，不能只补跑失败项后与旧 PASS 跨 run 拼接。
+独立 reviewer 可以是未参与当前修复的子代理或人员，但其结果不等于 `human_review_status` 或 `technical_lead_review_status`。C2a 只对适用范围执行，不按无关判据凑反例；未执行的适用项目必须明确记 `NOT_RUN/BLOCKED`，不计 PASS。实质性 tests、输入、评分证据或结论变化后，按最早受影响的 P 门更新契约，再使依赖旧输入的 C 结果失效并从 C1 重闭；纯记录/排版且不改变证据与结论的报告更新不触发重启。
 
-**独立/子代理复审的强制产出下限**：C2/C3/C2a 委托给子代理或自审时，验收前必须核对产出下限，任一门失败即拒收重跑，不得默默接受——(a) C2a 对每条 float 判据给出 under-strict 与 over-strict 各至少一个反例（输入+期望分+实际分），实跑或注明静态推演及推导过程，并发布"实跑覆盖 M/N"与"等价解覆盖 M/N"统计；(b) 报告体量低于同批中位数 30% 即拒收——缩水报告是"没逐判据读代码"的最强信号；(c) 随机抽 3 条 `@criterion` 对照 `checks.py` 函数体验证发现是否属实，任一不符即拒收并要求打开全部函数体；(d) 全表零反例时重新逐判据检查，确属穷尽必须逐条说明。规则文本不会自我执行，这些门是把规则变成验收标准的方式。
+**独立复审验收按证据质量，不按报告长度**：对实际委托且适用的复审，核对其覆盖范围、独立性、证据引用、发现与未决项；存在具体矛盾或覆盖缺口时针对缺口复核。不得以同批报告长度百分位拒收，也不得为满足随机抽查配额重复打开无关判据。
 
 #### Schema-safe manifest / validator placement
 
-当前任务正式 schema 与实际 runner 优先于历史示例。只有正式 schema 明示允许扩展时，才能向 `criteria_manifest.yaml` 添加 evidence registry 或 validator metadata；**不得为了满足 WorkC 抽象要求添加未知顶层字段。**若 schema 不允许或 runner 不加载该位置，registry/validator 必须位于 runner 已批准、不会被自动发现为 scoring module 的 tests-side 位置，或由不可变 harness 提供。找不到合法位置即 `BLOCKED`。无论落位何处，validator 必须在 scoring runner 前 fail-closed 执行，记录路径、digest、启动命令及至少两项漂移负控结果。
+当前任务正式 schema 与实际 runner 优先于历史示例。只有正式 schema 明示允许扩展时，才能向 `criteria_manifest.yaml` 添加 evidence registry 或 validator metadata；**不得为了满足 WorkC 抽象要求添加未知顶层字段。**若 schema 不允许或 runner 不加载该位置，registry/validator 必须位于 runner 已批准、不会被自动发现为 scoring module 的 tests-side 位置，或由不可变 harness 提供。找不到合法位置即 `BLOCKED`。仅在本轮适用且需要 validator 时，才要求其在 scoring runner 前 fail-closed 执行并记录路径、digest、启动命令及与漂移风险相称的验证结果。
 
 ## 3. 架构识别与 profile 分流
 
@@ -150,25 +152,25 @@ explicit_precedence | recast | resolution | reason
 6. **服务与凭据**：未披露、不可用或缺可信环境凭据的服务不能成为候选硬门；正式依赖但环境缺失时记 infrastructure/BLOCKED，不要求候选寻找 secrets。
 7. **日志归因**：候选输出、harness/exec 诊断噪声、基础设施失败必须分开；wrapper banner、shell warning 和 verifier 日志默认不进入候选质量判断。
 8. **评分身份**：仅作为 assertion message、异常文本、日志标签、测试标题或 display name 的 `RUBRIC_*` 常量不是评分身份；必须能追到 judge、registry、结果或正式聚合映射。
-9. **双模式轨迹解析（常驻）**：轨迹判据必须同时接受 solution 模式与 agent 模式两种证据形态——solution 模式常带 process-events.json 紧凑轨迹或自带 `{action,target}` 参数的 ATIF；agent 模式只有真实会话导出的 ATIF，tool_calls 仅携带 `function_name` 与 provider 形态参数（如 `file_path/path/url/command/code`），永远没有 `{action,target}` 键。只读 `args.action/args.target` 或匹配 solution 专有动作令牌（如 `cleanup_after_confirmed`）的判据在 agent 模式下恒 False/漏计。凡 manifest 行 evidence 含 `trajectory` 的判据，交付前必须用 agent 形态的合成 ATIF 夹具跑过解析断言；清理/落点类动作优先以工作区终态（policy active naming 声明的路径存在性）为模式无关证据，叙事令牌只能作辅助。仅用 oracle 轨迹验证的轨迹判据视为 UNVERIFIED。
+9. **双模式轨迹解析**：当适用判据依赖 trajectory evidence 时，按正式输入形态验证解析器可处理实际使用的 solution/agent 模式。不能仅凭 oracle 轨迹证明 agent 模式已验证；适用模式或真实样本不可得时记 `UNVERIFIED/BLOCKED`。清理/落点类动作可优先以正式要求的工作区终态作模式无关证据，叙事令牌只能作辅助。
 10. **权重单一口径（常驻）**：先从已验证的实际 RewardKit/runner 版本、加载路径与 runtime result 确认逐项 weight 语义，再要求 manifest/索引投影与运行时单条评分单元一致；例如仅在已验证为 rewardkit 0.2 对应行为时，deterministic 行映射 checks.py 注册权重、judge criterion 行映射 quality.toml `[[criterion]].weight`，缺省 1.0 并按实际维度规则归一。桶级（`$checks`/quality）与维度级权重按当前 runner/reward.toml 的真实层级处理，禁止把归一化值或上层权重泄漏进行内。版本或封装不同时必须通过 runtime discovery 重建映射，不能套用 0.2 或历史示例。跨层混用多套口径会使"行和恰为 1"的错误校验自洽通过——核对时必须沿 criterion→bucket→dimension→reward 真实链逐层复算，并逐行与运行时注册权重比对，不做聚合和校验替代。
 
 `ground_truth.json` 的禁读规则继续优先。两个正式载体无法消解时，只阻断受影响 claim。
 
 ### 4.1 判据自证与空集护栏（常驻，20260920 批次起）
 
-每条确定性判据交付前逐项过完这组检查，任何一条不满足即视为判据缺陷：
+以下是按判据特征触发的常驻护栏：只审查存在相应逻辑/证据依赖的判据；适用检查必须 fail closed，确认缺陷须补永久回归。不得要求每个判据机械执行所有类别的探针。
 
-1. **空证据集不得自证**：正向、序列、完成度或过程型谓词含 `all(...)`、`any(...)`、`sum(checks)` 时，必须先回答“集合为空时结果是什么”。凡空集能使分数非 0 或直接满分（如 `all(x in eps for x in business if x in eps)` 在无任何业务调用时恒真），必须显式前置“关键证据存在”门（核心动作集合非空、目标文件可解析等），否则 0.0。空集通过 = 判据为空壳，与关键词空壳同罪。**例外只能是正式规则本身为负向安全事实**（如“未调用禁调 endpoint”）：此时服务可用且权威审计明确返回空 list 可以证明未发生该动作；服务不可达/载荷无效不是空 list，绝不可借此给分。
+1. **空证据集不得自证**：正向、序列、完成度或过程型谓词使用 `all(...)`、`any(...)`、`sum(checks)` 等集合聚合时，检查空集合结果。凡空集能使分数非 0 或直接满分，必须显式要求关键证据存在，否则 0.0。空集通过 = 判据为空壳。例外仅限正式规则本身为负向安全事实（如“未调用禁调 endpoint”）：服务可用且权威审计明确返回空 list 可证明未发生该动作；服务不可达/载荷无效不是空 list，必须 fail closed。
 2. **判据证据不可由被评者写就**：沿生产者链核对每个 evidence 文件——谁创建、挂在哪个卷、agent 进程是否持写权。agent 可写卷（如 `/logs/agent/**`、`/tmp`）上的文件只能作 candidate-attributable 行为证据，不得作为判据真值来源；verifier 侧“复制/改名/算哈希”不改变来源可伪造性。修复方向按优先级：服务进程内查询端点（例如 `/v1/audit`）且其**底层审计状态也必须由服务/verifier 持有，候选不能通过其他 endpoint、共享卷或挂载修改、删除或回滚** > 挂载在 verifier 侧、agent 无路径可达的副本 > 原则上不用（见下）。仅 GET/“只读”路由本身不是 authority 证明，P2 必须核验 producer、backing state、候选 reachability 与 mutation path。一旦采用服务活真值，**禁止任何文件回退**：成功响应（含空列表，即真实 nop 状态）必须原样当真返回——把合法“空真值”误判为服务不可用而回退读文件，等价于给伪造证据留门（20260920 返修实测缺陷）；连接失败/超时/无效载荷一律 fail closed（判据按缺证据记 0，基础设施归因交 runner/报告），不得改读任何 agent 可及副本。行形状校验（int `seq` + str `ts` 之类的“生产者盖章”）不构成担保——这些字段同样可被伪造，只许作纵深防御，禁止作 fallback 准入条件。禁调/完整性类负向判据（如 forbidden-call purity）优先“读活真值”而非“文件里没出现坏行”，避免判据逻辑向 agent 泄漏。
 3. **正控与负控判定**：验证预期必须匹配 claim，而非机械要求 oracle 满分或 nop 为 0（WorkC 总则：Oracle 不必为 1，nop 不必为 0）。正向过程/完成度 claim 在没有必要的肯定性证据时须为 0；负向安全 claim 可在**可达且格式有效的权威 live audit**明确显示无违例时合规，即使该 audit 为 `[]`。伪造 evidence 文件不得改变任何结果；审计不可达或载荷无效时，所有依赖其否定事实的分量均不得得分，并标为 infrastructure。上述按 claim 的正、负控任一不成立即判据缺陷，须修到成立或如实记 BLOCKED。
-3a. **顺序/守卫分量禁止空证据 auto-pass（20260920 返修常驻项）**：形如 `not (sends and cleans) or cleans[-1]>sends[-1]` 的空集合守卫在动作缺席时恒真——模式专属令牌（如 solution-only 的 `cleanup_after_confirmed`）在另一模式下不被解析时，`sends`/`cleans` 均为空，守卫放行，把"无顺序证据"当"顺序正确"（实测：premature cleanup 先删 pending 再取得成功回执仍得满分）。顺序分量必须要求两侧证据同现（`bool(a) and bool(b) and a[-1]>b[-1]`）；反例夹具必须含 premature 顺序（先清理后确认）与正例（确认后清理）各一条，只测正例测不出 vacuous truth。每次返修判据后，上轮失败反例必须转为常驻回归断言。
-3b. **manifest 契约机检前门（常驻）**：当前正式 schema 明示支持时，manifest 顶层应声明 `evidence_sources` 注册表，行内 evidence 只能引用已注册源；schema 不支持扩展时，必须在 runner 已批准、不会被自动 discover 为 scoring module 的 tests-side 位置，或不可变 harness，提供等价 registry。两种落位都要在 scoring runner 启动前执行只读 mapping validator（fail-closed，非零退出终止评分，置于 test.sh 内 `rewardkit` 之前），至少校验：angle_id/注册身份 1:1（无 orphan/ghost/重复注册）、逐行 weight==运行时 Score.weight、维度/桶/root 权重链、checks.py 默认证据路径与 runner 冻结目标三方一致。没有 schema-safe 落位即 `BLOCKED`，不得添加未知 YAML 字段。validator 零第三方依赖（官方镜像可能无 PyYAML，需内置确定性子集解析器或逐行正则），加载 checks 模块用 importlib 固定路径、禁止 eval/exec 动态执行。validator 自身须附两类漂移负控（改一个行权重、改一个未声明 evidence 名）证明其真的会失败。
+3a. **顺序/守卫分量禁止空证据 auto-pass**：仅当判据涉及顺序或守卫逻辑时，确认两侧必要证据均存在，避免空集合使条件恒真。对应验证应包含能区分错误顺序与正确顺序的反例/正例；修复中发现的失败反例须成为常驻回归断言。
+3b. **manifest 契约机检前门**：仅在正式 schema、runner 或 profile 要求 manifest 与运行时契约一致性验证时执行。若需 validator，应在 scoring runner 启动前只读、fail-closed 校验注册身份、权重/维度链及证据路径绑定；不得添加 schema 不支持字段或使用动态执行。按正式载体与已识别漂移风险设置验证；没有 schema-safe 落位时标 `BLOCKED`，不得假定通过。
 3c. **过程判据正向绑定与权威集合（20260920 返修常驻项）**：以"服务端未拒绝/事件未发生"论证"规则已被采用"是反向证据，不能通过——必须正向绑定期望对象逐项证据（如注册表全部空昵称实体在明细中的明确 `skipped_*` 决策标记 + 创建记录零交集）。分页/搜索/枚举类判据的期望集合必须从权威输入（active policy 指向的 CSV 等）独立推导，不接受任意 query/无关实体计分，也不得以常量计数代替集合来源。偏好合并类判据须核 before/after 字段级语义与同主体，不得只看事件类型顺序；"首次系统写入"锚点必须涵盖全部副作用动作（写入、发送、清理），遗漏任何一类都会让 grounding 判据漏计。
 4. **服务真理来源绑定**：判据依赖 mock 服务内存态时，连接目标必须来自题包正式 env 注入（docker-compose/task.toml 的 env，如 `ATLAS_HOST`），不得硬编码题包外地址；解析失败或服务不可达时按“验证、新鲜度与归因”中的三分归因规则记 infrastructure failure，不得静默改读 agent 可写副本充数。
-5. **锚点串不被载体内容污染（20260920 返修常驻项）**：轨迹/审计类判据用锚点串（文件路径、成员签名、endpoint 等）定位”agent 做了某事”时，交付前必须反向检索一遍——把每个锚点串在题包业务文件（config、policy、handoff、SKILL、契约 XML 等被读对象）正文里 grep。锚点串若原样出现在被读文件正文里，整段轨迹文本的 `str.find` 子串匹配会”读到配置即误判为真调用”：free-reading 该配置就拿到行动分量（本题 `config/alias-review.yaml` 正文含 `data/registry/existing-handles.yaml`、`format-handoff.yaml` 正文含 `intermediate/source-index-working.docx`、`registry-api.xml` 契约正文含三个 `M:AliasRegistry.*` 成员签名，均属此类）。修复以结构性解析为准，且须同时满足四个子条件：(a) 双栏匹配——锚点只匹配 agent 自身产出文本，与文件正文（工具结果 content、文件体）分栏；(b) 动作通道只含执行记录——command、tool name、工具调用 arguments 可作动作证据，agent 叙述/计划文本（ATIF `message`）不算：叙述里说”我将 POST /v2/search”不是已调用；(c) 网关/服务调用锚点必须”请求形式 + endpoint”同现才算真调用——`NEXUS_HOST`、裸 endpoint 字符串只是配置字段名或路径，单独出现不得作为调用点（配置正文常含二者）；(d) 配置字段名（如 env 变量名）永远不得单独作为动作锚点。确需正文匹配时必须前置”该文件被 agent 主动打开”的独立证据门。验证必含三用例：污染探针（轨迹仅引用正文、零真实动作 → 相关分量全 0）、叙述探针（真实读取 + 叙述宣布调用但无调用记录 → 调用分量 0 且读取分量按实得计）、动作正例（真实执行 → 满分），缺一即验证不闭合。另须源码级确认 runner 发现路径只消费 canonical `checks.py`（如 rewardkit `_discover_group` 单层 `glob(“*.py”)`），编辑工具的 baseline 快照与 `.pipeline` 历史副本不会被任何 loader 加载——残留副本只审计、不依赖，冻结区不改动。
+5. **锚点串不被载体内容污染**：仅当轨迹/审计判据用路径、成员签名、endpoint 等字符串定位 agent 行为时，检查锚点是否也出现在被读载体正文，避免把读取配置误判为执行动作。必要时用结构性解析分离 agent 产出与文件正文、执行记录与叙述文本；网关/服务调用须有请求形式与 endpoint 的动作证据，配置字段名不得单独作为动作锚点。按判据风险构造污染、叙述与真实动作对照；仅在正式 runner/profile 要求时进一步核验 loader 发现路径与冻结副本。
 
-适用验证至少包含：空证据集用例、伪造文件 + 服务在线用例（证伪“改文件得分”）、**活真值为空探针**（服务正常返回空审计 + 磁盘放伪造文件：正向过程/完成度及肯定性安全分量必须为 0；负向安全分量仅可按 live `[]` 与其余正式本地条件得分，绝不可读文件回退）、服务不可达或无效载荷的 fail-closed 用例（伪造文件在场：所有依赖审计的分量为 0，并归因为 infrastructure）、oracle/nop 回归、锚点污染探针与动作正例。
+需验证本节护栏时，只纳入存在相应逻辑/证据依赖的探针：例如集合聚合的空集、文件证据的候选伪造、活真值的 `[]` 与服务失败、轨迹锚点污染/动作正例，以及题目要求的 oracle/nop 回归。服务在线成功返回 `[]` 不得回退文件；服务不可达或载荷无效时，依赖该服务的分量须 fail closed 并归因为 infrastructure。上述探针依任务目标、profile、变更影响和具体风险触发，不构成所有判据的固定清单。
 
 ## 5. 完成测试侧作业
 
@@ -184,7 +186,7 @@ explicit_precedence | recast | resolution | reason
 
 ### 5.1 判分匹配与解析防线（20260924 批次复核常驻项）
 
-本批复核结论：错误点不在轨迹，而在规则本身——“硬规则匹配、固定格式过严、错杀合法等价表达”，即用”要求文本里有没有出现某个字/某个数”验证答案。每个 score-bearing check 交付前按四类自查；无法构造对应正反探针时，该 check 视为未闭合。
+本批复核归纳了判分与解析的常见缺陷模式；仅对本轮新增、修改、受影响或存在具体风险的 score-bearing check，按相关缺陷模式做相称核验。未经触发的缺陷模式不构成每条 check 的固定探针配额。
 
 0. **答案空间先于匹配方式（第 0 类，最高优先）**：动手写判分前，先对每个 claim 回答”正确答案有几个”——**唯一解、有限枚举集、还是开放生成**。实测缺陷：水果品类这类非精确/非唯一答案，被硬编码成单一正确解（香蕉），skill 和轨迹质检都能过，但苹果、橘子等全部其他正确解被误杀；生成式交付（每次报告内容都不同）更无法用代码规则覆盖。路由规则：
    - **rule 覆盖仅限唯一性事实**：输入文件的固定字段名读取（文件不会换字段名）、精确值计算、固定 schema/路径/hash、封闭枚举且正式来源完整列出全部合法值——这些可确定性复算，才允许 rule/代码判分；
@@ -194,8 +196,8 @@ explicit_precedence | recast | resolution | reason
 1. **硬匹配判分失真**：
    - **过松（放水）**：数字/关键词命中必须绑定语义目标与位置——“统计正确”要求数值来自目标统计对象的目标字段，不是 PDF 全文任意位置出现该数字；”执行了操作”要求真实退出码/输出/服务状态证据，不是提交了名为脚本的文件；”未改动”必须比对内容（hash/规范化等价），不是关键词还在。凡 `in text`/`str.find` 命中即给分的正控，必须配”同 token 出现在错误位置/错误对象”反例且得 0，否则该 check 放水。
    - **过严（错杀）**：判分只做全文搜禁词、不分肯定/否定语境（”未泄露””没有影响”含禁词即判零）是缺陷；正式规则只要求语义结果时，不得把一种写法钉成唯一答案——恰好 N 行、特定变量名、必须含连续字符串”不受影响”等形态约束，只有正式规则明文规定该形态时才合法，否则等价正确写法必须同分。判分与 gold 的等价类（数量并列、同义表达、等价格式）在 P2 声明，未声明等价类而错杀即 issue。
-   - 每个匹配型 check 交付前必须跑**等价表达正控**（换一种合规写法应得满分）与**位置/语境负控**（token 在错误位置或否定语境应得 0 分或按规则计分），两个探针缺一即不闭合；有限多解题的等价表达正控必须覆盖至少两个不同的合法解（多解正例夹具），只测代表解测不出单解钉死。
-2. **判分程序自身 bug（整题零分型）**：解析器必须对真实产物结构做**双向覆盖断言**——解析成功且提取到非空目标集合。实测缺陷：PPT 解析只遍历最外层 shape、组内文字全漏（必须递归进 group shape）；对话文件是 list 结构却按 dict 读取（必须按实际 JSON 结构分派，list/dict 各自处理）；文件名含非 ASCII/编码漂移导致基线对不上（路径匹配必须规范化编码后比较，不得裸 `==`）。解析器必须配**结构反例**（group 内文字、list 型对话、乱码文件名夹具）；解析结果为空/None 时 fail closed 记 0 并单独归因，不得静默按通过或把异常吞成候选 0 分（三分归因见“验证、新鲜度与归因”）。
+   - 对本轮修改、受影响或有具体过严风险的匹配型 check，按答案空间和错误模式选择等价表达正控、位置/语境负控；有限多解时覆盖合法解集合的代表性，不要求与风险无关的固定探针数量。
+2. **判分程序自身 bug（整题零分型）**：当本轮涉及或依赖特定解析器/产物结构时，验证其能解析真实目标形态并提取预期目标集合；按实际消费的结构选择结构反例（如嵌套 shape、list/dict 对话、非 ASCII 路径）。解析结果为空/None 时 fail closed 并单独归因，不得静默按通过或吞掉异常（三分归因见“验证、新鲜度与归因”）。
    - **真实形态对拍优先于自造夹具**：检查者/对照组自产的证据（solve.sh 自己写的 conversation.json/trajectory）通过判分不证明判分正确——自产证据形态与 runner 真实输出形态可能不同（dict vs 扁平 list、`tool_calls[*].function.name` 嵌套 vs 顶层字段、文件名实际拼写）。判分读取的每个 evidence 文件，形态对拍必须以**同批真实 rollout 产物样本**为准（WorkC 内只能用 runner/verifier 正式导出或挂载的样本；`.pipeline/` 仍绝对禁读，需要其内容时按环境事件移交）；对照组自洽永远不能凌驾真实样本不匹配。取不到真实样本时，形态兼容性结论降级为"未验证"，不得据此给判据出 PASS。
    - **数量/哈希代理身份**：`len(x)==N`/`count==N`/`sum==X`/`hash==h`/`set==set` 类判据只验数量或全量哈希时，必须附加成员身份/字段值/来源验证——构造"保留数量与哈希但替换成员"的最小反例（同条数换账号、header hash 对但行内字段错配、来源镜像混入），放行即缺陷。豁免：数量只作先决 short-circuit 门、后续有完整身份验证。
    - **反向惩罚合规行为**：agent 无控制权的条件（user 措辞/复述、环境释放时机、工具触发）不得成为扣分必要条件——构造"agent 完全合规但依赖条件未触发"的最小反例，扣分即缺陷；反查 instruction/policy 是否明文强制该条件，无明文即缺陷。
@@ -236,7 +238,7 @@ explicit_precedence | recast | resolution | reason
 
 规范文件名冲突同样 fail closed。不得用 manifest 增行恢复已废弃数据项。Manifest 只用于定位 scorer、速览和比对 `partial_credit`；实际权威仍是 `checks.py`、`quality.toml`、配对 prompt、runner 和真实聚合。
 
-当前新版要求全部 LLM 评分项的最终有效 reward 占比合计 `≤40%`。沿真实 criterion→group→dimension→reward 链复算；同一项不能因 prompt、quality、manifest 和 runtime 多层出现而重复计权。关键词空壳、错误数值、关键内容缺失及移除全部 judge 的事实检查消融是必需负控；缺授权或隔离时如实记 `BLOCKED/NOT_RUN`。
+0917 profile 的正式评分链仍须满足 LLM reward 占比 `≤40%` 等 profile 要求；关键词空壳、错误数值、关键内容缺失或 judge 消融等负控，仅在正式要求、完整 profile certification，或本轮影响/具体风险涉及相应行为时执行。
 
 ## 7. Case 身份与指标
 
@@ -272,23 +274,16 @@ explicit_precedence | recast | resolution | reason
 
 ## 9. 强制 QA 报告与交付
 
-完成、返修或作业交付自检必须使用 [qa_report.template.md](assets/qa_report.template.md) 生成或更新根目录 `qa_report.md`。报告至少包含：
+完成、返修或作业交付自检必须使用 [qa_report.template.md](assets/qa_report.template.md) 生成或更新根目录 `qa_report.md`。所有报告都包含通用核心：固定写入边界、实际 test allowlist、allowlist 外零变化审计、正式规则来源与适用架构、实际发现及归因、实际改动、相关验证/未运行项、freshness、阻塞与限制、适用 readiness 状态及外部提交真实状态。仅在适用时展开：
 
-- 固定最大写入边界、实际 test allowlist、allowlist 外零变化审计；
-- `.pipeline` 引用审计：work 数据零引用或已删除引用的清单；冻结路径上的残留引用逐条记录；
-- 规则、架构与 profile；三维目录及每维 checks cardinality；
-- quality/reward/react prompt 库存、配对、弃用状态和 manifest–quality–prompt–checks–reward–runtime 一致性；
-- `R0/T0/N0`、physical/discarded/active 库存、manifest/prompt 零计数；
-- issue 台账、`F/AR/AT/A`、删除量与两项指标；
-- run freshness、HTML evidence 方法、服务/凭据 preflight；
-- candidate failure、harness noise、infrastructure failure 三分归因；
-- post-trajectory 环境事件、精确缺失路径和 repair disposition；
-- LLM 最终有效占比、四类负控、人工/负责人/轨迹/算法状态；
-- C1 canonical V1 入口与完整结果、C2 独立设计/载体复审、C3 独立 expected-value 复算、C4 计数/issue/freshness/status 对账及每轮 restart-on-change 记录；
-- `.pipeline` 引用审计必须覆盖 `tests/**` 与 `qa_report.md`，只记录零引用或已删除/冻结残留，不读取或转述 `.pipeline/` 内容；
-- 差异、阻塞项、限制与外部提交真实状态。
+- 0917 三维目录及 checks cardinality；quality/reward/react prompt 库存、配对、弃用状态和 manifest–quality–prompt–checks–reward–runtime 一致性；
+- 与本轮计分范围相关的 `R0/T0/N0`、physical/discarded/active 库存、`F/AR/AT/A`、删除量与指标；
+- 实际涉及的 run freshness、HTML evidence、服务/凭据 preflight、post-trajectory 环境事件、LLM 占比、负控、人工/负责人/轨迹/算法状态；
+- 按交付目标和适用范围执行的 C1 canonical V1、C2 独立设计/载体复审、C3 expected-value 复算、C2a 对抗反例与 C4 状态对账记录。
 
-将结论拆成 `test_delivery_handoff_ready`、`evaluation_certified`、`platform_submission_ready` 和实际 `external_submission`。上传不等于提交成功；平台显示“进行中”不能写 `SUBMITTED_CONFIRMED`。未发生的人工、负责人、轨迹或算法环节写 `NOT_RUN/NOT_REQUESTED`，不得由代理代签。C1–C4 只投影到这些既有状态，不另建一套 readiness；tests-side handoff 要求四门均 `PASS`，但这仍不能替代 V2+ evaluation certification。
+不适用的 profile/阶段字段标 `NOT_APPLICABLE` 并简述依据；适用但未执行的检查标 `NOT_RUN/BLOCKED` 并说明原因及影响，不能当作 PASS。报告模板中的章节本身不会令检查自动适用。`.pipeline` 引用审计只在允许读取的 `tests/**` 和根报告中检查路径字符串，不读取或转述其目录内容。
+
+将结论拆成 `test_delivery_handoff_ready`、`evaluation_certified`、`platform_submission_ready` 和实际 `external_submission`。上传不等于提交成功；平台显示“进行中”不能写 `SUBMITTED_CONFIRMED`。未发生的人工、负责人、轨迹或算法环节写 `NOT_RUN/NOT_REQUESTED`，不得由代理代签。C1–C4 只投影到这些既有状态，不另建一套 readiness；需要声明 `test_delivery_handoff_ready=YES` 时，四门均须按当前任务适用范围闭合且为 `PASS`，不适用的子检查须有依据并经该门显式判为 `NOT_APPLICABLE`，不得把适用的 `NOT_RUN` 当作通过；这仍不能替代 V2+ evaluation certification。
 
 当前文字 SOP、来源日期和批次流程见 [current-sop.md](references/current-sop.md)，回归矩阵见 [skill-evals.md](references/skill-evals.md)。
 
@@ -302,11 +297,7 @@ WorkC Skill 自身维护、GitHub 发布或 push 转交 skill-creator。题包�
 
 ## 11. Pinch / ClawEval legacy review crosswalk（增量，不改变 WorkC 主流程）
 
-`E:\\work-C\\doc\\质检SKILL\\pinch_qa_new` 的 D0–D5 是 Pinch/ClawEval 的内层复审方法，不是 WorkC 的第二套权限或第二套交付门。WorkC 始终优先执行既有：
-
-```text
-P0 → P1 → P2 → P3 → 修改实际授权的 tests/** → P4 → C1 → C2 → C3 → C2a → qa_report.md → C4 → 交付退出门
-```
+`E:\\work-C\\doc\\质检SKILL\\pinch_qa_new` 的 D0–D5 是 Pinch/ClawEval 的内层复审方法，不是 WorkC 的第二套权限或第二套交付门。WorkC 始终保留既有 P0–P4、C1–C4 状态和顺序；通常按目标、profile、变更影响和风险执行最小适用闭环，只有正式要求完整 Pinch/legacy 专项认证时才展开该专项全量 D0–D5 证据。
 
 在适用的 `legacy`/`legacy-pinch` 题目中，将 D0–D5 映射如下：
 
@@ -317,7 +308,7 @@ P0 → P1 → P2 → P3 → 修改实际授权的 tests/** → P4 → C1 → C2 
 | D2 建立独立覆盖表 | P2 Claim–Evidence–Scorer Topology | 每个原子 claim 记录答案空间、判定方式、evidence 对象、producer/ownership、触发条件、runtime identity 和归因；不能以已有 criterion 数量代替覆盖推导。 |
 | D3 答案空间与 code/judge 路由 | P2/P3 | 唯一且可复算的事实才用 deterministic rule；有限多解必须覆盖完整合法集；开放生成、方法选择和语义质量交允许的 judge。参考实现、关键词、行数、命名或单一示例不得钉成唯一答案。 |
 | D4 差异核对 | P3 / C2 | 在独立设计冻结后读取 student tests，逐项标记等价覆盖、漏覆盖、过松、过严、题面外新增、重复或证据不足；只能在授权 `tests/**` 内修复。 |
-| D4.5 确定性规则反例审计 | P3 Mutation Matrix / C2a | 每条 score-bearing deterministic rule 都要下钻 helper、parser、baseline、遍历和排除分支，并给出合法-PASS 与违规-FAIL 最小反例；静态推演也必须列输入、期望分和推导。 |
+| D4.5 确定性规则反例审计 | P3 Mutation Matrix / C2a | 对本轮修改、受影响或有具体风险的 score-bearing deterministic rule 做风险相称反例；若要求完整 legacy/Pinch 专项认证，则覆盖该专项完整适用范围。 |
 | D4.6 模型第二审 | C2/C2a advisory evidence | MAAS/模型只提供疑点线索；每个疑点必须回到正式题面、源码和 evidence 人工复现或标 `UNRESOLVED/BLOCKED`。模型未提及不代表通过，模型输出不能代签人工/负责人状态。 |
 | D5 收口与回归 | C4 / 交付退出门 | 对账身份、issue、freshness、归因、allowlist 与 readiness；任一 tests 或结论证据变化都按 restart-on-change 从最早受影响门重跑，不跨轮拼接 PASS。 |
 
@@ -348,3 +339,40 @@ Pinch 的“直接修复”语气不能扩大 WorkC 写权。实际题包中：
 ### 11.3 Pinch 辅助脚本不是 WorkC authority
 
 Pinch 的 `audit.py`、`static_check.py`、`deep_check.py`、`rewardkit_check.py`、`llm_rule_review.py` 和 `run_tests_sandbox.py` 可作为历史/外部辅助线索，但不能替代 WorkC canonical runner、schema-safe validator、runtime identity、evidence ownership、V0–V5、freshness 或 C1–C4。特别注意：源脚本的 sidecar 报告路径、启发式 RewardKit 路由、递归别名发现、task-specific deep formula、MAAS `token-env` 读取缺陷以及 sandbox Oracle fallback 文档/实现不一致，都不得进入 WorkC 的第二执行权威；所有相关限制写入 `qa_report.md`。
+
+### 11.4 第二轮规则：非权威模板、判分分工与反作弊硬门
+
+本节是对现有 WorkC 流程的增量硬化，不创建第二套流程，也不改变题包的写入权限。
+
+#### 11.4.1 `criteria_manifest.template.yaml` 与 `checks.template.py` 仅是非权威脚手架
+
+- 题包或外部目录中名为 `criteria_manifest.template.yaml`、`checks.template.py` 的文件只能登记为 `NON_AUTHORITATIVE` authoring scaffold/reference；其内容不是真实题面、formal claim、expected value、schema、weight、evidence path、doc/object ID、runner、registry、aggregation、runtime identity 或函数实现。
+- 不得从模板示例复制或推导常量、ID、路径、数值、函数签名、装饰器/注册方式、RewardKit 版本、`.pipeline`/`ground_truth` 引用、评分公式或冻结证据规则。模板中即使出现这些文字，也不能成为 WorkC 的运行时依赖或报告真值；`ground_truth.json` 和 `.pipeline/` 仍绝对禁读、禁引用、禁作 evidence/expected value 来源。
+- 正式依据按当前 profile 的真实 precedence 取自 task instruction/policy、canonical carrier、正式 schema、实际 loader/runner、registry、aggregation、runtime loaded path/digest 和可复核的非禁读 frozen evidence。模板与实际 manifest/checks schema 不一致时不猜、不自动迁移，登记 `TEMPLATE_INVALID` 或受影响 claim `BLOCKED`，由正式 profile 决定 disposition。
+
+#### 11.4.2 tests 修复与根报告必须同轮闭合
+
+- 任何已接受的 `tests/**` 修改都必须在同一收口周期生成或更新根 `/qa_report.md`，至少写明 changed paths、issue、验证/未运行项、freshness、状态和实际 allowlist；`tests_changed_without_qa_report_update` 直接为 `BLOCKED/NOT_COMPLETE`。
+- 根 `/qa_report.md` 是唯一 tests 外题包例外。不得用 `qa_report_skill抽检.md`、sidecar、staging、补丁副本、额外题包清单或题包外报告替代本根报告；报告是记录和交付审计载体，不是修复旁路。
+- tests 无需修改时使用 `mutation=report-only` 并仍更新根报告；只有纯咨询才是 `chat-only`、零写入、不生成报告。修改本 WorkC Skill 包本身不扩大任何实际题包的 tests-only 权限。
+
+#### 11.4.3 tests-only 与环境/需求异常
+
+- 题包修复只能写当前明确授权的 `tests/**` 子集；`instruction`、`environment`、task/需求文件、`solution`、scripts、grader/judge、Dockerfile、业务输出和其他 tests 外路径全部冻结。外部问题不能通过复制、打包、重命名或补丁绕过。
+- 若环境或正式需求本身有问题，且不能在授权 tests 内独立修复，停止该项常规返修，只在根报告记录证据、影响、责任归因和移交；按适用性将数据项或 claim 标为 `DEPRECATED/ABANDONED`，并将外部修改请求标为 `OUT_OF_SCOPE/BLOCKED` 或 candidate/harness/infrastructure。不得顺手改环境、需求或 runner。既有 post-trajectory 精确缺失路径移交规则继续优先，移交不是 PASS。
+
+#### 11.4.4 确定性代码检查与语义 judge 必须去耦合
+
+- 事实、数值、集合及成员身份、排序、对象/doc ID、时间范围/时区/单位、文件/字段/schema/path、调用参数和最终状态等可确定性事实必须由代码检查覆盖。删除 judge 的 negative control 仍必须拒绝相应事实错误；不能用关键词、文件名/stem、数量、hash、exit code 或“遍历任意有效对象”替代目标身份和内容。
+- 概念识别、根因分析、建议合理性、对比论证、自然语言纠正、开放式报告/总结质量等开放语义必须由 LLM judge 验证，不得以固定关键词列表、单一句式或字符串命中伪装语义判断。正式 mandatory semantic claim 必须进入最终通过条件；advisory judge/MAAS、模型沉默、judge 未运行、无法复现或服务不可用都不是 PASS，需要时 fail closed 为 `BLOCKED`。
+- 唯一解、有限多解和开放生成先在 P2 分类：有限多解必须接受完整合法集合或可证明的成员谓词，不能把参考实现的一种写法、固定变量名、单一水果/ID、固定行数或单一文本当作唯一合法答案。
+
+#### 11.4.5 独立反例与 anti-hack
+
+- 对本轮修改、实际受影响或存在具体过松/过严风险的 deterministic rule，按风险选取独立反例：至少覆盖适用的合法不同实现、最小违规及能检验目标身份/来源绑定的 anti-hack 方向。无关规则不要求逐项穷举；P3/C2a 可复用同一反例，但须分别记录验证目的。适用反例缺失或检查未执行时标 `NOT_RUN/BLOCKED`，不能写 `FIXED` 或 PASS。
+- 指定 doc/object ID 时只验证正式来源给出的允许目标集合；禁止遍历所有 ID、发现任意有效 ID 就得分。相关身份检查应覆盖同数量不同成员、目标缺失但其他对象存在、错误对象但 token 正确、候选可写 evidence、count/hash/name proxy 等适用风险。正确集合须来自正式、非禁读、独立权威 carrier；candidate-owned 文件及其复制/改名/哈希版本仍是 candidate-owned。空证据、解析空/`None`、服务失败、live `[]`、提前动作、anchor/config-content pollution 及嵌套/list-dict/Unicode/path/timezone 变体，按实际依赖和风险纳入 fail-closed 验证。
+- 服务端请求 URL 时：仅允许 http/https；发请求前校验 host，并拒绝 localhost、环回、私有和保留地址。
+
+#### 11.4.6 freshness 与闭环重启
+
+当输入、证据或结论实质变化时，仅将依赖这些变化的旧 run 与门标记 `STALE`；从最早受影响的 P gate 更新，再执行受影响且适用的 C 门。若变化影响 canonical V1 输入或整体证据基线，则从 C1 重启。不得跨 cycle 拼接 PASS。纯排版/转录或仅更新时间且不改变证据、结论、输入指纹时，不触发重启；在报告中记录同步情况。

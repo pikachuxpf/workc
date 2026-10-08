@@ -19,7 +19,7 @@
 
 ## 2. 当前主流程与角色收口
 
-1. 标注人员理解当前规则、instruction、persona、fixtures 和正式 materialized carriers，建立覆盖基线，修复授权 tests，生成 `/qa_report.md`。AI/skill 只辅助发现问题；输出必须由人工回到正式规则、原始 evidence 和实际 runner 逐项核查。
+1. 标注人员按当前规则、instruction、persona、fixtures 和正式 materialized carriers 检查相关覆盖并修复授权 tests；按目标与影响执行适用验证，生成 `/qa_report.md`。AI/skill 可辅助发现问题；对实际使用的结论，由授权复核者依据正式规则、原始 evidence 和 runner 核验。
 2. 技术负责人汇总交付并批量复核；这是独立收口环节，不能把单题代理自检写成负责人已验收。记录包摘要、复核人、结果和未处理问题；无证据时写待复核。
 3. 首轮轨迹评估由项目收口方交给算法侧运行，不是标注人员必做的启动步骤。主 SOP 的“问题数≤5%”只约束这一阶段；页面未明确其完整分子、分母和样本范围，不能替换 `F/N0`、漏召率、reward 或单题通过阈值。正式口径缺失时保留阶段条件并记录未核实。
 4. 被轨迹打回后，对反馈逐项判断是否真实存在；修复后个人多轮复测，再由技术负责人批量复核，通过后移交项目收口方。当前主 SOP 指出该返修收口不再由项目收口方重跑轨迹，而直接交算法验收；这不等于本地评测已认证或算法已验收。
@@ -47,8 +47,8 @@
 - 只有 `tests/process/quality.toml` 与 `tests/process/reward.toml` 可选。quality 存在时，同目录必须恰好一个精确命名的 `react_prompt.md`，quality 使用 `judge="react"` 与 `prompt_template="react_prompt.md"`。
 - quality/prompt 缺失、重复、别名/大小写变体、归属歧义或模板绑定不一致时，整条数据项先标记 `DEPRECATED/ABANDONED`。禁止自动创建、猜写、改名、拼接或合并 prompt；prompt 不新增 persona/身份、权重或隐含要求。
 - 全部 LLM judge 项合计最终 reward 权重占比不得超过 **40%**。沿当前实际 runner 从 criterion 到组、维度和总 reward 复算，不能按文件数、criterion 数或 manifest 原始 weight 相加估算。无法确认聚合时 `BLOCKED`；调整所需配置位于冻结路径时移交。该上限适用于当前新版对齐规范，不无条件推广到 legacy 或其他正式批次。
-- 对照至少包含关键词空壳、错误数值、关键内容缺失；可复用当前题真实产物作单变量变体。记录被影响 checks、分维度和总分，而不只证明参考候选高分。主规范未给出“明显失分”的数值阈值，不擅造统一 cutoff；至少受影响事实项必须正确失分，交付门仍按正式契约。
-- 做 **judge 消融**：在题包外隔离验证配置中移除所有 judge 项，保留事实 checks，验证事实错误不能被认证通过。记录消融后的实际分母、是否重新归一及正式通过判据；没有数值通过阈值时记录关键事实失败，不虚构总分门。
+- 按适用范围验证关键词空壳、错误数值、关键内容缺失；可复用当前题真实产物作单变量变体。仅当 profile/正式要求要求此类完整认证且有授权隔离时，才执行全套负控和 judge 消融；普通单题按影响与具体风险选择必要检查，不据此降低确定性事实与语义 mandatory gate。记录受影响 checks、分维度和总分，而不只证明参考候选高分。主规范未给出“明显失分”的数值阈值，不擅造统一 cutoff；至少受影响事实项必须正确失分，交付门仍按正式契约。
+- 0917 新格式下，如正式要求完整 profile certification，应执行 judge 消融：在题包外隔离配置移除所有 judge 项，保留事实 checks，验证事实错误不能被认证通过。普通单题仅在 judge 影响本轮结论或存在相关风险时执行针对性消融；不能以省略消融为由弱化确定性事实检查。记录消融后的实际分母、是否重新归一及正式通过判据；没有数值通过阈值时记录关键事实失败，不虚构总分门。隔离或可信 evidence 不足时记 `BLOCKED/NOT_RUN`，不在宿主运行候选来补分数。
 - 所有对照使用一致的适用 evidence、候选基线与环境；只改变预定变量。不能污染 trajectory 后将分数下降归因于输出判据修复。隔离或可信 evidence 不足时记 `BLOCKED/NOT_RUN`，不在宿主运行候选来补分数。
 - Manifest 的 `summary` 与 `partial_credit` 若为当前 schema 字段，逐项核对与真实检查及部分分算法一致；manifest 仅用于定位、速览、对照，真正规则与权重必须读取对应 checks/quality 和 runner。格式参考中的 `angle/rule_hint` 形态与对齐页中的 `summary/partial_credit` 形态是不同示例，按当前 schema 判定，不盲目合并字段。
 - 若当前正式契约要求 tests manifest 与根目录 manifest 字节一致，先只读比对。根目录副本始终冻结；需要同步根目录才能闭合时标记 `BLOCKED` 并移交，不能扩大写权，也不为所有题新建根目录副本。

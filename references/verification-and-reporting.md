@@ -178,17 +178,9 @@ N1 = R1 + T1
 
 执行 V3/V4 前，先做不泄密的 service/credential preflight：记录服务端点类别、凭据来源/挂载状态、必要环境变量名或 secret reference、权限/连通性、模型/runner 可用性及结果；不得记录 token、cookie、密码、完整 Authorization header 或秘密值。preflight 未通过时动态项 `BLOCKED`，不得降级到假 judge、模板回退或把错误归候选。
 
-新版必须沿真实聚合层级复算全部 LLM 有效 reward share，包含 quality/judge、嵌套权重、归一化、门控和 fallback 的实际贡献，证明 `≤40%`；不得按 judge 数量或表面 weight 估算。manifest、quality、prompt、process/output/safety 三个 checks、reward、runner/aggregation 或 runtime 任何变化后，都必须重新复算并回归。
+0917 profile 的适用任务须沿实际聚合层级复算 LLM 有效 reward share，包含 quality/judge、嵌套权重、归一化、门控和 fallback 的实际贡献，并验证正式 `≤40%` 上限；不得按 judge 数量或表面 weight 估算。仅当相关 manifest、quality、prompt、checks、reward、runner/aggregation 或 runtime 输入发生实质变化时重算并验证受影响范围。
 
-在授权、隔离和服务健康时，至少覆盖：
-
-- bootstrap/加载闭合；
-- known-answer 正例与确定性反例；
-- persona/对话证据边界（适用时）；
-- HTML evidence 的原始 artifact、解析方式、selector/片段、转义/可见性与 digest；
-- 四个负控：关键词空壳、错误数值、缺关键内容、移除所有 judge 的事实检查消融。
-
-四负控必须保持除单变量外的 candidate、evidence、环境和配置一致；分别报告各维度、总 reward、正式通过门、run_id 与 freshness。局部 parser 探针不证明端到端门闭合。未授权或服务阻塞如实记 `BLOCKED/NOT_RUN`。
+仅在任务/profile/本轮风险要求动态验证，且已有授权、隔离和健康服务时，按适用范围覆盖 bootstrap/加载、known-answer 正例与确定性反例、persona/对话证据边界、HTML evidence，以及相关 judge/事实负控。各探针除正式 profile 全量认证外，按影响与风险选择；局部 parser 探针不能冒充端到端门闭合。未授权或服务阻塞如实记 `BLOCKED/NOT_RUN`。
 
 ## 8. 轨迹后环境事件与状态收口
 
@@ -222,11 +214,11 @@ repair_disposition = NO_FURTHER_REPAIR_REQUIRED_ENVIRONMENT_HANDOFF
 
 完成、返修或作业交付自检时，必须使用 [../assets/qa_report.template.md](../assets/qa_report.template.md) 生成或更新题包根目录 `qa_report.md`。即使 tests 无需修改，也必须 `mutation=report-only` 落盘报告；缺少本轮报告不得声明完成。
 
-最终差异冻结后，完成/返修/作业交付自检必须执行 [pre-delivery-qa-fusion.md](pre-delivery-qa-fusion.md) 的 C1–C4（含 C2a 逐判据对抗反例审计）：唯一 canonical V1 入口、独立设计/载体覆盖复审、独立 expected-value 复算、每条 float 判据的 under/over-strict 最小反例穷举，以及计数/issue/freshness/status 平账。`test_delivery_handoff_ready=YES` 要求这些门均已执行且为 `PASS`；任一门 `NOT_RUN/FAIL/BLOCKED` 时 handoff 为 `NO/BLOCKED`。全部 PASS 仍不替代 V2+ evaluation certification。若复审、复算或对抗反例引发任何 tests 或结论证据变化，旧闭环全部 `STALE`，回到受影响 P gate，并从 C1 完整重启；不得只补跑失败项或跨 run 拼接。独立 reviewer 不得冒充人工或技术负责人签字。
+最终差异冻结后，完成/返修/作业交付自检必须按 [pre-delivery-qa-fusion.md](pre-delivery-qa-fusion.md) 对 C1–C4 作可审计收口。四个门的 readiness 合同不变，但证据范围按任务目标、适用 profile、变更影响与具体风险确定：C1 检查适用正式契约，C2/C3 覆盖受影响及结论必要的载体/数值，C2a 对适用的变更或风险判据做反例审计，C4 对账适用身份、issue、freshness、状态和最终 diff。需要声明 `test_delivery_handoff_ready=YES` 时，各门须闭合并为 `PASS`；未执行的适用项为 `NOT_RUN/BLOCKED`，不得视为 PASS；无适用子项须有依据并由相应门显式记录 `NOT_APPLICABLE`。全部 PASS 仍不替代 V2+ evaluation certification。实质证据变化使依赖该证据的旧结果 `STALE`，按依赖影响更新最早受影响 P 门并从 C1 重闭；纯报告转录/排版且不改变输入、证据和结论时不触发重启。独立 reviewer 不得冒充人工或技术负责人签字。
 
-报告至少包含：固定写入边界、实际 allowlist、零变化审计、正式规则来源、基线与 architecture、0917 结构 inventory、manifest/quality/prompt/checks/reward/runtime consistency、prompt path/status/digest、配对与弃用状态、三套身份计数和 raw-to-final mapping、issue 与建议/mandatory 区分、F/AR/AT/A/DR/DT/D 及两项指标、service/credential preflight、HTML evidence、LLM≤40%复算、四负控、三分归因、run freshness、post-trajectory 环境事件、C1–C4 闭环与重启轮次、四类人员/阶段状态、差异和限制。不得写秘密值。
+报告必须包含通用核心：写入边界、allowlist、正式来源、适用架构、实际发现/修复、归因、相关证据与 freshness、适用检查的 `NOT_RUN/BLOCKED`、阻塞、最终差异及 readiness。结构 inventory、身份明细、service/credential preflight、HTML/LLM 控制、post-trajectory 台账、人员/阶段状态等仅在对应 profile、执行或交付阶段适用时展开；否则简记 `NOT_APPLICABLE` 及理由。不得记录秘密值。
 
-C1 的 canonical V1 入口从当前题包实际 validator/self-test/runner 识别，不全局规定文件名。它必须是一次完整、可复核、fail-closed 的运行；只有多个散脚本的局部 PASS 时，C1 仍为 `BLOCKED/NOT_RUN`。C2/C3/C2a 必须由与当前修复实现相独立的复审路径完成，并记录 reviewer、scope、输入 digest 和发现；C2a 审计开始前须核对 TESTS_HASH 与同轮报告一致，反例报告须达到产出下限（实跑覆盖/等价解覆盖统计、反例本体与预测分）；复审导致修改后必须从 C1 重启。
+C1 的 canonical V1 入口从当前题包实际 validator/self-test/runner 识别，不全局规定文件名。适用时它必须是一次完整、可复核、fail-closed 的运行；若目标只要求静态测试侧交付且无可运行 canonical 入口，应记录 `NOT_APPLICABLE` 或 `BLOCKED` 的依据，不把局部脚本 PASS 冒充 canonical PASS。C2/C3/C2a 由独立于当前修复实现的复审路径覆盖适用范围，记录 reviewer、scope、输入 digest 和发现；C2a 对纳入范围核对指纹并记录反例输入/预期与实际或推演结果及未运行原因。证据实质变化时依赖该证据的闭环结果 stale，并按适用的 freshness 规则重开。
 
 交付结论拆成：
 

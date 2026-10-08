@@ -113,7 +113,7 @@ Oracle/nop 使用全新、隔离的 output、audit、conversation、run 和 judg
 | D2 | 建立独立 obligation inventory，冻结后才读 student criteria/checks。 | P2 |
 | D3 | 先判答案空间，再选 code/judge：唯一事实、有限多解、开放生成/方法选择分别处理。 | P2/P3 |
 | D4 | 按独立义务对照 student 实现，区分等价覆盖、漏覆盖、过松、过严、题面外新增、重复和证据不足。 | P3/C2 |
-| D4.5 | 对每条 deterministic rule 下钻 helper/parser/baseline/排除分支，构造合法-PASS 与违规-FAIL 双反例。 | P3/C2a |
+| D4.5 | 对本轮修改、受影响或有具体风险的 deterministic rule 下钻相关 helper/parser/baseline/排除分支，构造与风险相称的反例；无关 rule 不逐项穷举。 | P3/C2a |
 | D4.6 | 使用模型或 MAAS 做六视角疑点发现，之后逐项回到源码、正式来源和 evidence 复现。 | C2/C2a advisory |
 | D5 | 运行适用的 V0–V5、更新回归和 `qa_report.md`，平账并处理 freshness。 | P4/C4 |
 
@@ -125,7 +125,7 @@ answer_space(unique/finite-multiple/open) | code-or-judge | evidence object
 producer/ownership/writeability | runtime identity | expected result | attribution
 ```
 
-完成 D0–D3 前，不得读取 student criteria/checks、参考 tests、baseline 或 solution 来收窄答案。`ground_truth.json` 和 `.pipeline/` 无论如何都不能读取或引用。若某个 tests 外问题是唯一阻塞原因，只在根 `qa_report.md` 记录 `OUT_OF_SCOPE/BLOCKED`，不修改其文件。
+`D0`–`D5` 是 legacy/Pinch 专项复审流程，不是每项 WorkC 作业的默认完整清单。常规任务按受影响义务和风险执行最小适用闭环；只有用户/正式 profile 要求完整 legacy/Pinch 专项认证时，才运行并记录 D0–D5 声明范围内的全量复审。启用 D0–D3 设计流程时，完成独立设计前不得用 student criteria/checks、参考 tests、baseline 或 solution 收窄答案。`ground_truth.json` 和 `.pipeline/` 始终不得读取或引用。tests 外问题若构成阻塞，只在根 `qa_report.md` 记录 `OUT_OF_SCOPE/BLOCKED`，不修改其文件。
 
 ### 9.2 答案空间与判定器可靠性
 
@@ -138,13 +138,13 @@ producer/ownership/writeability | runtime identity | expected result | attributi
 
 ### 9.3 D4.5 确定性规则反例表
 
-每条 score-bearing deterministic rule 在可标记“等价覆盖”前，至少填写：
+仅对本轮修改、受影响或有具体风险的 score-bearing deterministic rule 填写此表；记录纳入理由和未覆盖风险。正式 legacy/Pinch 专项审计需要声明完整覆盖时，才扩展到该专项范围内的全部规则。范围内适用的合法-PASS 与违规-FAIL 反例必须可复核，适用而缺失时标 `NOT_RUN/BLOCKED`，不能写等价覆盖。
 
-| rule | helper/parser/baseline/排除分支 | 目标 evidence 与比较粒度 | 合法-PASS 最小反例 | 违规-FAIL 最小反例 | 实跑/静态推演 | issue/run/freshness |
+| rule | helper/parser/baseline/排除分支 | 目标 evidence 与比较粒度 | 合法-PASS 最小反例（适用时） | 违规-FAIL 最小反例 | 实跑/静态推演 | issue/run/freshness |
 |---|---|---|---|---|---|---|
-| {{ID}} | {{具体函数/分支}} | {{对象/字段/内容/来源}} | {{不同于参考但合规的输入与期望分}} | {{最小违规输入与期望分}} | {{refs/推导}} | {{refs}} |
+| {{ID}} | {{具体函数/分支}} | {{对象/字段/内容/来源}} | {{不同于参考但合规的输入与期望分 / N/A 理由}} | {{最小违规输入与期望分}} | {{refs/推导}} | {{refs}} |
 
-必须特别覆盖：空证据集、vacuous `all/any`、伪造 agent-writable 文件、live service 正常返回 `[]`、service 不可达/无效载荷、叙述-only 动作、配置正文锚点污染、premature order、嵌套对象、list/dict、Unicode 路径、数量相同但成员替换、等价 API/工具形态和否定语境。没有两类反例时只能写 `EVIDENCE_INSUFFICIENT/BLOCKED`，不能写等价覆盖。
+依据具体 profile/risk 纳入空证据、vacuous `all/any`、伪造 agent-writable 文件、live service 空值/不可达、叙述-only 动作、配置正文锚点污染、premature order、嵌套对象、list/dict、Unicode 路径、数量相同但成员替换、等价 API/工具形态和否定语境等探针。没有纳入理由或必要反例时不得宣称该范围已审完。
 
 ### 9.4 D4.6 模型第二审（advisory）
 
@@ -153,7 +153,7 @@ Pinch 的六个 review lens 可作为疑点清单：对象绑定/精确计数、
 1. 每条疑点必须由人工回到正式 source、实现和 evidence 复现；
 2. 能复现的进入 issue/P3 mutation matrix，并补永久回归；
 3. 不能复现的保留 `UNRESOLVED/BLOCKED` 处置和原因；
-4. 模型未提到的 rule 仍必须完成 D4.5，沉默不等于 PASS；
+4. 模型未提到的规则不代表 PASS；仍按本轮修改、影响与具体风险范围执行 D4.5，专项完整认证时覆盖声明的完整范围；
 5. 不得把模型输出当作 `human_review_status`、`technical_lead_review_status` 或算法验收签名。
 
 不得把源 `llm_rule_review.py` 的 token 参数、任意输出路径或模型名称直接写入 WorkC secrets、题包或报告秘密值。WorkC judge 仍按本 Skill 第 10 节处理。
@@ -169,3 +169,15 @@ Pinch 的六个 review lens 可作为疑点清单：对象绑定/精确计数、
 `pinch_qa_new/scripts/` 下的 `audit.py`、`static_check.py`、`deep_check.py`、`rewardkit_check.py`、`llm_rule_review.py`、`run_tests_sandbox.py` 不复制进 WorkC。它们存在以下不能越权的限制：audit 的 sidecar/任意报告路径、启发式架构分流、rewardkit checker 的递归别名/regex 发现、inventory-specific deep formula、MAAS token-env 读取缺陷、sandbox 文档声称但实现缺失的 Oracle fallback，以及 stub judge 不能证明语义正确。它们最多作为 V0/V1 线索，不能替代真实 loader、schema-safe validator、V2–V5、evidence ownership、freshness 或 C1–C4。
 
 任何要求改 instruction、environment、task.toml、solution、scripts、grader/judge、Dockerfile、业务输出或其他 tests 外文件的问题，都只在根 `qa_report.md` 记录路径、证据、归因和 `OUT_OF_SCOPE/BLOCKED`；不创建 sidecar、不复制副本、不将报告当作修复旁路。tests 无需改动时使用 `report-only`。
+
+### 9.7 第二轮 legacy-pinch 硬门
+
+以下规则只细化 legacy/Pinch 的复审，不改变 WorkC 外层 P0–P4、C1–C4 或实际题包写入边界。
+
+1. **模板不是正式来源**：`criteria_manifest.template.yaml` 与 `checks.template.py` 即使出现在题包、下载目录或历史资料中，也只能登记为 `NON_AUTHORITATIVE` authoring scaffold。不得从其中推导题面、claim、expected value、权重、证据路径、doc/object ID、schema、函数签名、RewardKit 版本、`.pipeline`/`ground_truth` 规则或 runner/registry/aggregation 身份。正式 manifest/checks/schema/loader/runner 和非禁读 frozen evidence 优先；不一致时标 `TEMPLATE_INVALID` 或 `BLOCKED`，不猜、不自动迁移。
+2. **修改后必须同步根报告**：任何接受的授权 `tests/**` 变更都要在同一收口周期更新根 `qa_report.md`，写明 changed paths、issue、验证/未运行项、freshness、allowlist 和状态。缺报告是 `tests_changed_without_qa_report_update=BLOCKED/NOT_COMPLETE`；不得用 `qa_report_skill抽检.md`、sidecar、staging 或补丁副本替代。tests 不变时仍是 `report-only`；纯咨询才 `chat-only`。
+3. **环境/需求异常直接废弃或移交**：instruction、environment、task/需求、solution、runner、Dockerfile、grader/judge、业务输出或其他 tests 外问题不能修。根报告标出精确路径和 evidence，按责任写 `OUT_OF_SCOPE/BLOCKED` 或 candidate/harness/infrastructure；若需求/环境使该项不再有可认证契约，停止常规返修并按正式 profile 标 `DEPRECATED/ABANDONED`。不得创建 placeholder 或把移交写成 PASS。
+4. **code/judge 去耦合**：事实、数值、集合/成员、排序、对象 ID、时间范围/时区/单位、文件/字段/schema/path、调用参数和最终状态必须由代码覆盖；移除 judge 的负控仍拒绝对应错误。概念、根因、建议、对比论证、开放报告与自然语言质量必须由语义 judge 验证，不能用固定关键词列表代替；正式 mandatory semantic claim 必须进入最终 gate，judge 沉默、未运行、不可用或不能复现都不是 PASS。
+5. **D4.5 anti-hack 反例**：仅对本轮修改、受影响或有具体风险的 deterministic rule 做风险相称的合法不同实现、最小违规及 anti-hack 检查；未纳入规则不要求逐项穷举。记录输入/期望分/实际分或静态推演、相关 helper/parser/baseline/exclusion、owner/writeability。指定 doc/object ID 只能检查正式允许集合，禁止全量枚举“任意 ID 有效即通过”；适用时检查同数量不同成员、目标缺失但其他对象存在、错误对象正确 token、候选可写 evidence、count/hash/name proxy。空 evidence、解析空、live `[]`/服务失败、叙述-only、正文锚点污染、premature order、嵌套/list-dict/Unicode/path/timezone 按当前规则依风险验证并 fail closed。
+6. **D4.6 仅 advisory**：MAAS/模型发现必须回到正式 source、源码和 evidence 人工复现；不能复现就 `UNRESOLVED/BLOCKED`。模型未报告不代表 PASS，也不能代签人工、负责人或算法状态。
+7. **freshness**：实质输入、证据或结论变化时，将依赖该变化的旧 run/门标记 `STALE`，从最早受影响 P gate 更新，并重跑受影响且适用的 C 门；canonical V1 输入或整体证据基线变化时从 C1 重启。纯排版/转录不触发重启，不得跨轮拼接 PASS。

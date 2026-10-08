@@ -121,7 +121,7 @@ criteria:
 
 可确定复算的事实使用解析器、标准库或精确断言；不要用 judge 代替 ZIP、CSV、JSON、AST、集合、计数或精确数值检查。“完成必要正向动作”和“避免危险动作”通常是两个独立事实，应分别定义真实 scoring check。
 
-硬匹配防线（20260924 批次复核）：**答案空间先于匹配方式**——rule 判分仅限唯一性事实（固定字段名读取、精确值计算、固定 schema/路径/hash、正式来源完整列出的封闭枚举）；有限多解必须接受完整合法集，开放生成/方法选择写 criterion 交 LLM judge 语义判定，绝不写死"正确答案"文本。数字/关键词命中必须绑定语义目标与位置，等价表达正控（有限多解至少两个合法解）与位置/语境负控是每个匹配型 check 的交付前置；解析器必须对真实产物结构做"解析成功且提取到非空目标集合"的双向覆盖断言，并配 group 内文字、list 型对话、乱码文件名等结构反例；期望值与 C3 复算冲突时以可复核复算为准登记 gold-defect。完整四类规则见 [SKILL.md](../SKILL.md) 的“5.1 判分匹配与解析防线”。
+硬匹配防线（20260924 批次复核）：**答案空间先于匹配方式**——rule 判分仅限唯一性事实（固定字段名读取、精确值计算、固定 schema/路径/hash、正式来源完整列出的封闭枚举）；有限多解必须接受完整合法集，开放生成/方法选择写 criterion 交 LLM judge 语义判定，绝不写死“正确答案”文本。对本轮修改、受影响或有具体过严风险的匹配型 check，验证适用等价正例及位置/语境负控；有限多解正例应覆盖多个合法解。解析器在受影响或风险范围内验证真实产物结构及非空目标集合，并选择相关结构反例；不得把这些探针清单解释成无关检查的普遍配额。期望值与 C3 复算冲突时以可复核复算为准登记 gold-defect。完整四类规则见 [SKILL.md](../SKILL.md) 的“5.1 判分匹配与解析防线”。
 
 ### 注册与 runtime 一致性
 
@@ -256,7 +256,7 @@ AI 生成或修改的 quality criterion、manifest row、check、expected value�
 1. **P0 范围**：确认 WorkC tests-side 授权、实际 `tests/**` allowlist、`qa_report.md`、V0–V5 上限、禁读项、动态隔离和 service/judge 授权。缺任一前提不得静默升级运行。
 2. **P1 基线与加载链**：在编辑前确认当前 schema、`legacy / 0917 / hybrid / unresolved`、manifest 与三维唯一 `checks.py`、可选 quality/prompt/reward、`R0/T0/N0`、runtime loaded path/digest、registry 与真实聚合。quality/prompt 违规先 `DEPRECATED/ABANDONED`；deterministic-only 与有效 legacy 保持合法。
 3. **P2 证据拓扑**：逐项闭合 `formal claim → authority source → producer/writeability → scorer/runtime ID → weight/aggregation → attribution`。manifest evidence 不能证明 ownership；live service 成功响应（包括 `[]`）不得回退到 candidate-writable 文件。正向 claim 没有可信、非空 authority truth source 则 `BLOCKED`。
-4. **P3 不变量与控制**：至少覆盖受影响的 structure/identity/weight closure、非空性、伪造 evidence、live unavailable、双模式 trajectory、锚点污染、HTML 可见语义、candidate/harness/infrastructure 归因。每个确认的 tests-side 缺陷必须留下最小反例、正例和预期的常驻回归；不能构造则不写 FIXED。
+4. **P3 不变量与控制**：按本轮修改、受影响 claim 与具体风险，检查相关的 structure/identity/weight closure、非空性、evidence ownership、运行边界、可见语义和 candidate/harness/infrastructure 归因。每个确认的 tests-side 缺陷必须留下能复现该缺陷的最小反例、正例及预期常驻回归；不能构造则不写 FIXED。正式要求完整 profile certification 时，按该 profile 的全量适用范围完成验证。
 5. **P4 变更与交付**：每个修改映射到失效的 claim、validator、control、aggregation 与 run；只有替代验证 `FRESH/PASS` 才能认证。禁止跨 run 拼接局部 PASS。完成后更新 `qa_report.md`、做 allowlist diff 审计，并将环境/冻结路径问题移交为 `BLOCKED/OUT_OF_SCOPE`。
 
 若需要 manifest registry 或 validator metadata，只有当前正式 schema 明示允许扩展时才写入 manifest；否则采用 runner 已批准且非 scoring-discovery 的 tests-side 落位，或不可变 harness。没有合法落位即 `BLOCKED`，不得通过未知 YAML 字段破坏正式契约。

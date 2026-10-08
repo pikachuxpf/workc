@@ -130,23 +130,13 @@ Manifest、React prompt 和结构文件增加零个 case。Prompt 配对修复�
 
 ## Judge 与 LLM 权重
 
-全部 LLM 项的最终有效 reward 占比合计不得超过 40%，必须沿真实聚合链复算，同一项不能因 prompt、quality、manifest 和 runtime 多层出现而重复计权。关键词空壳、错误数值、关键内容缺失和移除全部 judge 的事实检查消融是新版必需负控。
+全部 LLM 项的最终有效 reward 占比合计不得超过 40%，必须沿真实聚合链复算，同一项不能因 prompt、quality、manifest 和 runtime 多层出现而重复计权。关键词空壳、错误数值、关键内容缺失和 judge 消融等负控，在正式要求、完整 profile certification，或本轮影响/具体风险涉及相应行为时执行。
 
 真实 judge 配置只放在 `~/.agents/skills/workc/.secrets/judge.env`。代理、通用编排层和候选不得读取、打印、解析、转写、复制或提交其值；仅受信任的独立 judge 进程/容器可在 V4 使用。缺失时将需要 judge 的步骤标为 `BLOCKED`，不使用模板回退。
 
 ## QA 报告和交付
 
-完成类作业必须使用 [QA 报告模板](./assets/qa_report.template.md)。模板 1.4 要求记录：
-
-- 三维结构与 checks cardinality；
-- quality/reward/react prompt 库存、digest、配对、弃用和 consistency；
-- physical/discarded/active 身份与 `R0/T0/N0`；
-- HTML evidence 和 service/credential preflight；
-- candidate failure、harness noise、infrastructure failure；
-- post-trajectory 环境事件、精确缺失路径和 repair disposition；
-- LLM 占比、四类负控、freshness 和未运行项；
-- C1 canonical V1、C2 独立设计/载体复审、C3 独立 expected-value 复算、C4 QA 平账与 restart-on-change 轮次；
-- `test_delivery_handoff_ready`、`evaluation_certified`、`platform_submission_ready` 与 `external_submission` 实际状态。
+完成类作业必须使用 [QA 报告模板](./assets/qa_report.template.md)。模板提供通用核心及 profile/阶段专用字段：每次记录结论、范围与 allowlist、正式依据、发现/归因、实际变更、适用验证与 freshness、阻塞/未运行项、最终差异和适用 readiness。0917 结构、身份、HTML/service/judge、轨迹、平台及 C1–C4/C2a 深度账目按适用性填写；不适用简记 `NOT_APPLICABLE` 并说明理由，适用但未执行记 `NOT_RUN/BLOCKED`，不得当作 PASS。报告不得记录秘密值。
 
 保存、打包或上传不等于提交成功；只有验证平台最终状态后才能报告提交成功。
 

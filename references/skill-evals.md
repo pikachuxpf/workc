@@ -208,29 +208,17 @@ canonical 期望为唯一 `tests/criteria_manifest.yaml`；`tests/process`、`te
 | 未授权 V3/V4 或服务阻塞 | 四负控 `BLOCKED/NOT_RUN`；静态探针不冒充端到端通过 |
 | 多轮结果波动 | 每轮独立 run_id/digest，全部报告并归因；不挑最高 |
 
-## 11. 强制报告 1.4 回归
+## 11. 强制报告模板回归
 
-完成、返修或作业交付自检时，根目录 `qa_report.md` 必须基于 1.4 模板包含：
+完成、返修或作业交付自检时，根目录 `qa_report.md` 必须基于模板记录通用核心：固定写入边界、实际 allowlist、正式依据、发现与归因、实际变更、适用验证及 freshness、阻塞/未运行项、最终差异审计和 readiness。以下专项账目仅在对应架构/profile/执行/交付阶段适用时展开；不适用可记 `NOT_APPLICABLE` 并简述理由，适用而未执行记 `NOT_RUN/BLOCKED`，不得冒充 PASS：
 
-- 固定 maximum writable scope、实际 test allowlist、根报告唯一例外与零变化审计；
-- architecture、baseline ID/hash、正式 mandatory 与 advisory 来源；
-- 0917 结构 inventory：expected/discovered/canonical/status/digest；
-- manifest、process/output/safety 每维恰好一个 checks 的状态；
-- quality/reward 可选状态，prompt path/status/digest；
-- quality–prompt 配对、弃用原因、责任方与禁止自动生成/猜 prompt 的 disposition；
-- manifest–quality–prompt–checks–reward–runtime consistency；
-- prompt 纳入 grader digest/freshness，任何变更后 stale 与回归；
-- 三套身份计数、legacy message-only non-case 和 raw-to-final mapping；
-- issue 台账、mandatory/advisory、candidate/harness-noise/infrastructure 三分归因；
-- AR/AT/A、DR/DT/D、最终库存、错误率与漏召率；
-- service/credential preflight 且不含秘密值；
-- HTML evidence、bootstrap、known-answer、persona；
-- LLM≤40%真实聚合复算与四负控；
-- post-trajectory 环境事件：阶段、`observed_at`、环境原因、单个 `exact_normalized_missing_path`、预期来源/挂载、责任、evidence、`BLOCKED/OUT_OF_SCOPE`、固定 repair disposition；每路径独占一行，禁止目录概述、glob 或合并路径；
-- C1 canonical V1 入口与 schema/TOML/YAML drift controls、C2 独立设计/载体覆盖复审、C3 独立 expected-value 三方复算、C4 QA 平账与 restart-on-change cycle；
-- 禁读与引用审计：不读取 `ground_truth.json`，`tests/**` 与 `qa_report.md` 不引用 `.pipeline/` 内容；
-- `human_review_status`、`technical_lead_review_status`、`trajectory_stage_status`、`algorithm_acceptance_status`；
-- `test_delivery_handoff_ready`、`evaluation_certified`、`platform_submission_ready` 与外部提交实际状态。
+- 0917 结构、manifest/quality/prompt/reward/runtime consistency 与身份计数；
+- HTML/bootstrap/known-answer/persona、service/credential、LLM≤40%及四负控；
+- post-trajectory 环境事件与精确缺失路径；
+- C1 canonical V1、C2 独立设计/载体复审、C3 独立 expected-value 复算、C4 适用 QA 对账及 C2a 变更/风险范围反例；
+- 人工、技术负责人、轨迹阶段、算法验收，以及平台/外部提交状态。
+
+不论适用性如何，保留禁读与秘密处理约束：不读 `ground_truth.json`，不读取/引用 `.pipeline/` 内容，不将秘密值写入报告。
 
 | 报告场景 | 预期 |
 |---|---|
@@ -300,7 +288,7 @@ canonical 期望为唯一 `tests/criteria_manifest.yaml`；`tests/process`、`te
 | carrier 只用路径子串匹配，或 required source 没有 consumer/integrity closure | C2 FAIL；使用 exact normalized path、producer/consumer 与适用完整性策略 |
 | 正式 policy 没有 canary，但审查要求固定示例 GUID | 拒绝全局 canary 要求；只执行当前正式 policy 明示的 provenance/integrity control |
 | C2 reviewer 参与了修复实现或直接接受“已修复”摘要 | independence 不成立，C2 `UNVERIFIED/BLOCKED`；不得冒充人工/负责人复核 |
-| C2 新发现遗漏后只修 tests 并保留旧 C1/C3 PASS | 所有受影响闭环结果 `STALE`；回到相应 P gate，从 C1 完整重启 |
+| C2 新发现遗漏后只修 tests 并保留依赖旧输入的 C1/C3 PASS | 依赖旧输入的结果 `STALE`；回到相应 P gate，并仅重跑受影响且适用的门；canonical V1 输入变化则从 C1 重启 |
 | checks 常量与 manifest 文本一致，但独立复算值不同 | C3 FAIL；登记 issue，不用 Oracle/GT/judge 覆盖独立推导 |
 | expected value 不能从允许载体独立推导 | `BLOCKED/N/A`；不猜数、不读取禁读材料 |
 | `F` 包含未验证 issue，或 `N0/A/D` 与明细不平 | C4 FAIL；修报告/底层台账后按变更影响重启闭环 |
@@ -308,9 +296,9 @@ canonical 期望为唯一 `tests/criteria_manifest.yaml`；`tests/process`、`te
 | 正式 runner 配置足以闭合静态 owner/writeability 契约，但实际 mount provenance 与 candidate run 未授权/未跑 | C2 可 PASS；C1–C4 及其他静态交付门均 PASS 时可声明 tests-side handoff，`evaluation_certified=NO/BLOCKED` |
 | 静态 owner/writeability 契约本身无法建立 | P1/P2/C2 `BLOCKED`；handoff 与 evaluation 均不可认证 |
 | C2a 审计开始时 TESTS_HASH 与同轮 C2/C3 报告指纹不一致 | 停止并报错（错版对拍）；统一版本后重启审计，不生成错位报告 |
-| C2a 只抽查部分判据构造反例 | 违反穷举原则；必须每条 float 判据 under/over 双向各至少一个反例 |
-| C2a 反例只写"看起来是浅代理"未列反例本体与预测分 | 拒收（未审）；静态推演也必须列输入、期望分、推导过程 |
-| 硬编码/正则/`==` 判据只测了 1 个等价写法 | 等价解枚举门未过；≥3 个合法等价形态（引号/变量名/中英同义/位置置换）全跑完才能声明无 over-strict |
+| C2a 只抽查部分判据且其中存在本轮改动、受影响或具体风险项未覆盖 | 对相关适用判据补足风险相称反例；仅无关项未展开不算缺陷。适用检查遗漏可能改变结论时，门不得 PASS |
+| C2a 反例只写“看起来是浅代理”未列反例本体与结果/可复核推导 | 纳入范围的审计视为未完成；适用项标 `NOT_RUN/BLOCKED`，不写 PASS |
+| 硬编码/正则/`==` 判据存在具体过严风险，但未测试相关合法等价写法 | 针对风险补充等价形态；不要求无风险判据固定三种变体 |
 | 生成式对象 twin 双反例分差 <0.3 | 浅代理（SHALLOW_GENERATIVE）；建议改 likert judge 承接 |
 | resources 无可抽正反例载体，twin 无法从载体构造 | 记 W（载体不足）跳过，不虚报不升 E |
 | 对照组/检查者自产证据通过判分 | 不证明判据正确；形态对拍以真实 rollout 样本为准，自产证据形态可能不符 |
@@ -318,8 +306,7 @@ canonical 期望为唯一 `tests/criteria_manifest.yaml`；`tests/process`、`te
 | agent 合规但 user 未复述/环境未释放依赖条件被扣分 | 反向惩罚合规行为缺陷；反查 instruction/policy 无明文强制即 E |
 | 判据硬约束（阈值/门数/must-call）与 policy 明文冲突或无推导路径 | policy-判据对拍缺陷；manifest 自证不作挡 E 依据 |
 | partial_credit 子分和 0.95 靠 min(1.0) 掩盖，或子条件互斥构造不出满足 fixture | 子分完整性缺陷；任何合规 agent 拿不到满分即 E |
-| 子代理复审报告体量 < 同批中位数 30% | 拒收重跑；缩水报告 = 没逐判据读代码 |
-| 随机抽 3 条 @criterion 验证复审发现与代码不符 | 拒收并要求打开全部函数体 |
+| 子代理复审报告没有覆盖其声明范围、缺少独立证据或未列未决项 | 按范围、独立性与 evidence 评估；不得用长度/比例、固定抽样配额或字数达标替代质量判断 |
 | `.pipeline` 字符串引用出现在 tests/report | 在可写范围删除引用并重跑；冻结残留只记录路径，不读取或转述其内容 |
 | Dockerfile 写 `harbor-rewardkit==0.2.0`（精确 pin） | 版本契约 PASS；run 记录实际解析版本 |
 | Dockerfile 写 `0.2.*`/`>=0.2.0`/裸包名 | version-drift issue；Dockerfile 冻结则 `OUT_OF_SCOPE/BLOCKED` 移交，不顺手改 |
@@ -400,15 +387,41 @@ canonical 期望为唯一 `tests/criteria_manifest.yaml`；`tests/process`、`te
 | MAAS/模型发现疑点 | 必须人工回到 source、源码和 evidence 复现；未复现保留 unresolved；模型沉默不等于 PASS，不代签人工状态 |
 | A–H 安全维度不适用 | 写 `NOT_APPLICABLE`，不创建空壳 check；安全 gate/weight 沿真实 runner，不套源文档公式 |
 | legacy binary 与 0917 float/Likert 规则混用 | 路由失败；按实际 profile/runner 重新建 contract，必要时 `unresolved/BLOCKED` |
-| Pinch `audit.py` 写 `qa_report_skill抽检.md` 或任意 sidecar | WorkC 交付失败；必须只更新根 `qa_report.md`，tests 外问题 `OUT_OF_SCOPE/BLOCKED` |
+| Pinch `audit.py` 不得写 `qa_report_skill抽检.md` 或任意 sidecar | WorkC 交付失败；必须只更新根 `qa_report.md`，tests 外问题 `OUT_OF_SCOPE/BLOCKED` |
 | Pinch 脚本 heuristic route / recursive aliases / stub sandbox 通过 | 只能是 V0/V1 辅助线索；不能替代 canonical loader、V2–V5、C1–C4 或 runtime identity |
 | 源 `llm_rule_review.py` token-env 缺陷或 sandbox Oracle fallback 文档不一致 | 记录脚本限制；不读/写 WorkC real secret，不将其结果当 judge 证据 |
 | 发现 Dockerfile、instruction、environment、task.toml、solution、scripts、grader/judge 或业务输出问题 | 只写根 `qa_report.md`，标 `OUT_OF_SCOPE/BLOCKED` 并按三分归因；不得修改、复制或创建旁路 |
 | tests 内授权 checks 有可修复 defect | 仅编辑实际授权 `tests/**`；更新根报告、永久回归、fresh run；外层 P/C 门顺序不变 |
 | tests 无需变化但要求交付自检 | `mutation=report-only`，生成/更新根 `qa_report.md`；不能用 `chat-only` 或 sidecar 代替 |
 | 纯咨询 | `chat-only`、零写入且明确未完成作业；不生成报告 |
-| 任一 tests 或结论 evidence 改变 | 旧受影响 C1–C4 全部 `STALE`，回到最早受影响 P gate，从 C1 完整重启，不跨轮拼接 PASS |
+| 任一 tests 或实质结论 evidence 改变 | 依赖变化的旧结果 `STALE`，从最早受影响 P gate 更新并重跑受影响且适用的 C 门；canonical V1 输入或整体证据基线变化时从 C1 重启；不得跨轮拼接 PASS |
 
 ## 19. Pinch 报告附录字段回归
 
-报告模板新增的 legacy annex 应至少能承载：D0–D5 状态、独立 obligation inventory、student difference、每条 deterministic rule 的两类反例、MAAS reproduction、A–H applicability/runner evidence，以及 tests 外 `OUT_OF_SCOPE/BLOCKED` 台账；这些字段不能覆盖或替换 WorkC 1.4 结论卡、C1–C4、freshness、归因和 readiness。
+报告模板的 legacy annex 按 profile/交付阶段适用性承载 D0–D5 状态、独立 obligation inventory、student difference、适用范围反例、MAAS reproduction、A–H applicability/runner evidence 及 tests 外 `OUT_OF_SCOPE/BLOCKED` 台账。仅正式要求完整 legacy/Pinch 专项认证时，才要求专项全范围 D0–D5/C2a 产物；任何 annex 不覆盖或替换通用报告核心、freshness、归因和 readiness。
+
+## 20. 第二轮模板、边界与判分硬门回归
+
+这些场景验证本轮增量不会替换既有 WorkC 流程。未实际动态执行的场景必须标 `NOT_RUN`/`BLOCKED`，不能由文字冒充 PASS。
+
+| 场景 | 预期 |
+|---|---|
+| `criteria_manifest.template.yaml` 或 `checks.template.py` 含错误权重、ID、路径、函数、版本或 `.pipeline`/`ground_truth` 示例 | 只登记 `NON_AUTHORITATIVE`；不得改变正式 contract；schema 不一致标 `TEMPLATE_INVALID/BLOCKED`，不复制或自动迁移 |
+| 模板与实际 manifest/checks/schema/runner 不一致 | 以正式 carrier、schema、loader、registry、aggregation 和 runtime identity 为准；无法消解时阻断受影响 claim，不猜、不任选 |
+| 修改一个授权 `tests/**` 文件但不更新根 `/qa_report.md` | `tests_changed_without_qa_report_update=BLOCKED/NOT_COMPLETE`；sidecar、staging、补丁副本和 `qa_report_skill抽检.md` 均不接受 |
+| tests 无需修改但要求交付自检 | `mutation=report-only`，仍更新根 `qa_report.md`；纯咨询才 `chat-only`/零写入 |
+| environment/instruction/task/需求/solution/Dockerfile/grader/judge/业务输出问题 | 只写根报告，标 `OUT_OF_SCOPE/BLOCKED` 并按 candidate/harness/infrastructure 归因；正式需求/环境不可认证时可 `DEPRECATED/ABANDONED`，不得修改外部文件 |
+| 唯一事实、数值、集合/成员、排序、对象/doc ID、时间范围/时区/单位、文件/字段/schema/path、调用参数或最终状态 | 必须有 deterministic code coverage；删除 judge 后对应错误仍 FAIL |
+| 概念识别、根因、建议、对比论证、开放报告或自然语言质量 | 必须由语义 LLM judge 验证；固定关键词列表不能替代；mandatory semantic claim 必须进入 final gate |
+| judge 沉默、未运行、不可用或无法复现 | 不是 PASS；需要 judge 的 claim `BLOCKED/NOT_RUN`，不能模板回退或由 MAAS 代签 |
+| 指定 doc/object ID 的检查遍历所有 ID并因任意命中得分 | anti-enumeration 失败；只允许检查正式允许目标集合，错误 ID 全量遍历反例必须拒绝 |
+| 数量相同但成员替换、目标缺失但其他对象存在、错误对象但 token 正确 | 必须 FAIL；身份/成员/字段/来源绑定不能由 count/hash/name/token proxy 替代 |
+| candidate-writable 日志、复制/重命名/哈希证据伪造 authority | 必须拒绝或按 candidate-owned 处理；verifier 复制不改变 ownership |
+| 每条 deterministic rule 只有参考正例，没有合法不同实现 PASS、最小违规 FAIL 或 anti-hack 反例 | 对本轮受影响或风险范围内的适用规则，C2a 未闭合；完整专项认证时按声明范围覆盖。适用项不能标 `FIXED`/`PASS`，保留 `BLOCKED/UNVERIFIED` |
+| 空证据、解析空/`None`、服务失败、live `[]`、提前动作、配置正文锚点污染、嵌套/list-dict/Unicode/path/timezone 变体 | 按适用正式规则 fail closed；live `[]` 不回退文件，服务失败归 infrastructure |
+| tests/manifest/prompt/reward/runner/evidence/aggregation/报告实质结论变化后引用旧 run | 依赖变化的旧结果 `STALE`，从最早受影响 P gate 更新并重跑受影响且适用的 C 门；canonical V1 输入或整体证据基线变化时从 C1 重启，禁止跨 cycle 拼接 PASS |
+| A–H 安全维度不适用，或 legacy binary 与 0917 float/Likert 混用 | 不适用写 `NOT_APPLICABLE`；安全 veto/weight 只按真实 runner/aggregation；混用路由失败并 `BLOCKED` |
+| Pinch 辅助脚本的 sidecar、heuristic route、stub sandbox、错误 Oracle fallback 或 token-env 缺陷 | 只能作 V0/V1 线索；不能替代 canonical runner、runtime identity、freshness 或 C1–C4，也不读取真实 secret |
+| 服务端发起 URL 请求 | 仅允许 `http/https`；请求前校验 host，并拒绝 localhost、环回、私有和保留地址 |
+
+第二轮完成的最低静态证据：五个目标文件包含本节对应的非权威模板、报告同步、tests-only、code/judge、anti-enumeration 和 freshness 关键词；主流程顺序与既有 1.4 状态字段仍存在。

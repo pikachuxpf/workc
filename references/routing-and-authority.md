@@ -16,15 +16,16 @@ tests/**
 ## 2. 固定主流程
 
 ```text
-理解题目与正式要求
-→ 建立 tests 覆盖基线
-→ 修改和优化实际授权的 tests/** 子集
-→ 执行适用验证
-→ 生成或更新根目录 qa_report.md
-→ 差异审计与交付
+锁定写入范围与授权
+→ 确认适用 profile、正式依据及 runner
+→ 检查相关 claims/evidence 与现有 tests 覆盖
+→ 仅修复已确认且在授权范围内的 tests 缺陷
+→ 执行授权且受影响的验证
+→ 更新根目录 qa_report.md
+→ 审计最终差异与适用 readiness
 ```
 
-题目与业务载体用于推导 tests 应检查什么，不产生业务文件写权。QA 报告是测试侧作业的强制收尾交付物，不是独立质检入口。tests 已正确时可跳过编辑，但仍须完成适用验证、报告和差异审计；纯咨询不进入完成流程。
+每项任务保留适用的 P0–P4/C1–C4 状态和 readiness 账本，但证据深度按目标、profile、变更影响与具体风险决定；全量反例、动态运行、平台/轨迹交付台账仅在相应范围触发。tests 已正确时跳过编辑，仍报告；纯咨询不进入完成流程。
 
 ## 3. 作业状态
 
@@ -133,3 +134,13 @@ Manifest 常见顶层字段为 `version`、`score_range`、`dimensions`、`crite
 - Pinch `audit.py` 的 sidecar/任意报告路径不适用于 WorkC，题包完成/返修/交付自检仍只能更新根 `qa_report.md`；
 - `rewardkit_check.py`、stub sandbox 或模型第二审都不能替代 V2–V5、证据所有权、freshness 和 C1–C4；
 - tests 外发现只进根报告并标 `OUT_OF_SCOPE/BLOCKED`，不得借辅助脚本写副本、修改 runner 或扩大题包写权。
+
+## 11. 第二轮路由硬门：模板信任、判分分工与反枚举
+
+1. `criteria_manifest.template.yaml` 与 `checks.template.py` 只能登记为 `NON_AUTHORITATIVE` authoring scaffold。文件名、注释、示例、装饰器、正则、递归 glob、数量或 hash 只能提供候选信号，不能提供 formal claim、expected value、weight、evidence path、doc/object ID、schema、函数实现、runner、registry 或 aggregation 身份；不得从模板复制 `.pipeline`/`ground_truth` 示例。正式 task/policy/carrier、schema、canonical path、loader、registry、aggregation、runtime digest 和独立非禁读 evidence 优先；无法消解时 `TEMPLATE_INVALID/BLOCKED`，不猜、不自动迁移。
+2. 任何接受的 `tests/**` 变更都必须同轮更新根 `/qa_report.md`；缺报告直接 `tests_changed_without_qa_report_update=BLOCKED/NOT_COMPLETE`。tests 不变时用 `report-only`，纯咨询才 `chat-only`。根报告是唯一题包外例外，禁止 sidecar、staging、补丁副本和其他清单。
+3. 路由到 tests 外的 instruction、environment、task/需求、solution、scripts、grader/judge、Dockerfile、业务输出或其他冻结路径时，只能在根报告记录证据、归因和 `OUT_OF_SCOPE/BLOCKED`；正式需求/环境不可认证时可标 `DEPRECATED/ABANDONED` 并移交，不能修改外部文件或创建 placeholder。
+4. 事实、数值、集合/成员、排序、对象 ID、时间范围/时区/单位、文件/字段/schema/path、调用参数和最终状态必须路由到 deterministic code；概念、根因、建议、对比论证和开放自然语言质量必须路由到语义 judge。删除 judge 后确定性错误仍要 FAIL；mandatory semantic claim 未进入最终 gate、judge 沉默/未运行/不可复现都不能 PASS，必要时 fail closed/`BLOCKED`。
+5. 对本轮修改、受影响或有具体风险的 deterministic rule 构造风险相称的合法不同实现、最小违规及 anti-hack 反例；无关规则不要求逐项穷举。指定对象只检查正式允许 ID 集合，禁止“遍历所有 ID、任意命中即通过”，相关身份风险需覆盖同数量不同成员、目标缺失但其他对象存在、错误对象正确 token、候选可写证据、count/hash/name proxy。无 runtime identity、authority 或目标集合时不任选，必要时 `BLOCKED`。
+6. 实质输入、证据或结论改变后，仅将依赖该变化的旧结果记 `STALE`，从最早受影响 P gate 更新并重跑受影响且适用的 C 门；canonical V1 输入或整体证据基线变化时从 C1 重启。纯排版/转录不触发重启；不得跨轮拼接 PASS。
+7. 服务端请求 URL 时：仅允许 http/https；发请求前校验 host，并拒绝 localhost、环回、私有和保留地址。
