@@ -1,130 +1,71 @@
-# WorkC 交付前 QA 融合门
+# 本次作业技术审核与收口清单
 
-本参考定义 WorkC 在最终 tests-side 差异冻结后的 C1–C4 收口。它把结构审计、设计复审、独立数值复算与 QA 平账接到既有 P0–P4 后面，目标是提前发现需要返修的问题，而不是增加另一套规则或报告。
+本文件融合 [简化前 a31c7d0 SOP](https://github.com/pikachuxpf/workc/blob/a31c7d0e4625f4168040ff260fd064ce7825a6fe/SKILL.md) 的逐项技术内核，不回滚旧权限或机械配额。按 [主流程](../SKILL.md)、[路由](routing-and-authority.md) 和 [质检默认许可与准入合同](qc-exceptions-and-admission.md) 选择本次范围；P0–P4、C1–C4/C2a 仅为历史步骤映射，不另设权限等级、readiness 或第二套验收。下列完整技术清单是 WorkC 作业员自身 FULL_ACCEPTANCE 的自查修验要求，不以外部两遍 QC 是否采用为前提；顺序见 [WorkC 作业员执行 SOP](execution-sop.md)。主角色主动查找、确认、集中修复并验证授权 tests/根 QA 的问题，不把这份清单当仅出审计意见的 QC 流程，不等待 reviewer 发现全部问题；作业员自查与报告自查不替代独立复核。
 
-## 1. 边界与非目标
+## 1. 范围与步骤映射
 
-- 题包内写入仍只允许实际授权的 `tests/**` 子集与根目录 `qa_report.md`。
-- C1–C4 不新增 criterion、check、权重、runner、sidecar、题包内清单或隐藏真值权限。
-- 不读取 `ground_truth.json`，不读取或引用 `.pipeline/` 内容；正式来源与当前 runner 优先于历史质检示例。
-- 不固定维度名称/数量、RewardKit 版本、canary GUID、覆盖百分比或历史题角度。
-- 不把 candidate-owned evidence、Oracle 分数、judge 结论或摘要变成独立真值。
-- 独立 reviewer 的 PASS 不等于人工、技术负责人、轨迹阶段或算法验收 PASS。
+- FULL_ACCEPTANCE 与无明示限制的默认无人值守：覆盖全题义务及全部实际评分判据，包括确定性与语义项、未修改项、注册聚合和解析依赖。不能仅追已有反馈、修改项或高风险项。
+- LOCAL_REPAIR：目标、受影响义务和共享依赖；本清单不升级为整题验收，本轮报告质量自查、按影响/风险复核，不新增全题独立门。READ_ONLY 仅静态核可读材料，动态项 NOT_RUN/UNVERIFIED，不写不运行。CONSULT 只评估；REPORT_QC 默认静态、不写题包、不运行，角色能力不生操作权；明示窄范围优先，未指定时识别并分别核本轮报告质量与适用历史失败 A/B 归因；RUN_ONLY 只执行指定模式，获准报告写入时自查质量。
+- P0/P1 对应现行范围、正式版本、实际评分身份库存与准入；P2/P3 对应义务—证据—评分拓扑及适用探针；P4 对应变更依赖与 freshness。
+- C1 对应实际加载/注册/聚合合同；C2 对应独立义务及候选可见载体；C3 对应独立复算；C2a 对应全题逐判据双向/等价探针；C4 对应 issue、最终文件、验证与报告平账。
 
-## 2. Canonical 输入映射
+先完成正式义务冻结，再独立冻结评分设计；然后核实现/证据控制权、独立复算、逐判据探针和真实输入兼容性，集中返修授权 tests/报告并完成正式验证。内外问题处置统一按 [SKILL §2](../SKILL.md#2-先选本次作业固定验收范围)，详细登记按 [报告合同 §2](verification-and-reporting.md#2-状态归因与证据范围)：修复/交付范围内已确认的 tests 内缺陷必须实际修复、完成适用合法验证并在同根 QA 写实际修改/结果，记录、建议或移交不能替代返修。可按发现迭代，不要求先跑明知错误的全套才允许修；主动确认的授权问题在首阶段修验，不留待 QC 才处理，零缺陷时记录有依据的不改；最终当前版本必须覆盖本次作业适用清单：FULL_ACCEPTANCE 覆盖全题完整清单，LOCAL_REPAIR 覆盖目标及实际受影响依赖，CONSULT/READ_ONLY 仅完成获准静态部分，RUN_ONLY 只执行指定模式；真实证据/安全限制不取消。
 
-C1–C4 只读取 P0–P4 已建立或当前正式载体直接产生的事实：
+## 2. 逐义务拓扑与答案空间
 
-| 键 | canonical 输入 | 禁止替代 |
-|---|---|---|
-| scope | P0 actual allowlist、execution ceiling、delivery、禁读项 | 用户措辞扩权、临时目录默认可写 |
-| baseline | P1 revision、结构/身份库存、runtime loaded path/digest | 单一总 hash、manifest 表面行数 |
-| claim | 正式 carrier、precedence、原子 claim、适用条件 | Oracle/GT 反推、reviewer 建议升级 |
-| evidence | P2 authority/producer/writeability、endpoint/mount、fallback | candidate 文件经复制或 hash 后冒充 authority |
-| controls | P3 正例、最小反例、空集/伪造/不可达/漂移控制 | 只跑 happy path、异常吞成候选 0 分 |
-| freshness | P4 change-impact、run ID、全部输入与结果 digest | 跨 run 拼接、较新时间戳替代 digest |
-| report | issue 台账、计数、状态向量、ready 状态、差异审计 | 第二份摘要覆盖底层 evidence |
+完整验收逐义务留下可核链路：正式来源/precedence、触发、唯一/有限/开放答案空间、判定方法、evidence producer/owner/候选可达及可写性、scorer/源码位置、runtime identity、逐层聚合及验证引用。用 [报告模板](../assets/qa_report.template.md) 现有表或有效旧记录承载，不另造 sidecar，不为填表重写历史。
 
-## 3. C1 — Canonical V1 Hard Gate
+义务从正式输入独立推导，不由现有 criterion 数量定义覆盖。逐项裁决等价、漏覆盖、过松、过严、题面外约束、重复或证据不足；有限合法集核来源及完备性，开放实现先核性质/行为，必要语义才用正式允许的 judge。返修不得把合法多解缩成代表解，或把语义变成关键词、变量名、行数、固定文案。没有合法语义链时记录对应缺口，不硬匹配救分或自行外发。
 
-1. 沿真实 `test.sh`、validator 与 tests-side self-test 找到一个 canonical V1 入口；没有现成唯一入口时，只能在正式 schema、实际 allowlist 和 runner 允许的位置建立，否则 `BLOCKED`。
-2. 入口必须 fail-closed，并覆盖当前任务适用的：
-   - Python/shell/TOML/YAML/schema 可解析性；
-   - identity exact-once、scorer target、weight/aggregation closure；
-   - manifest/quality/prompt/checks/reward/runtime 映射；
-   - source/evidence carrier 的精确路径、producer 与 consumer 闭合；
-   - validator 自身的单变量 drift controls。
-3. 记录 command、工作目录、输入 digest、开始/结束时间、返回码、输出摘要、结果 digest 与实际 scope。
-4. 多个局部脚本全部通过不自动等于 C1 PASS；只有 canonical 入口完整执行并返回成功才通过。
-5. C1 状态按执行事实派生：没有合法入口、缺授权/隔离或尚未执行为 `NOT_RUN` 并附 blocker（结论需要该门时 readiness 记 `BLOCKED`）；入口已执行且发现 schema/contract/control defect 或返回非零为 `FAIL`；入口执行中断于非测试侧 infrastructure 为 `BLOCKED`；完整成功才为 `PASS`。同一轮同时有“未建立入口”和静态已知 schema defect 时，C1 仍为 `NOT_RUN`，schema defect 单列 `FAIL` issue，不用聚合状态掩盖它。
-6. C1 是非候选的 tests-side 自检门。它不能代替 import/harness、candidate、Oracle、nop 或 judge 运行。
+每个 authority 依赖核底层状态及 mutation path：GET/只读 endpoint 名称不证明 authority，其他写入、删除或回滚接口可能改变 backing state。复制、重命名、hash 不改变来源；候选产物可证明其输出/行为，不能自证独立真值。正向完成与顺序要求肯定性证据；合法权威空集可支持正式负向安全事实，但不证明动作完成。失败、无效 payload 与成功空结果分别处理，不回退候选可写文件，也不把基础设施失败伪装成候选违规或普通零分。
 
-## 4. C2 — 独立设计与载体覆盖复审
+## 3. 独立复算与实际加载聚合
 
-由未参与本轮修复的 reviewer 只读执行，且不先接受“已修复”结论：
+对全部可复算判据，用不同于被审实现的推导路径比较 **独立参照值—实现/配置声称值—报告值**；调用被审函数再抄结果不算独立复算。核数值/单位/时区/符号/舍入/容差、边界、集合成员、计数、排序；环境依赖期望依据声明目标环境，不凭本机或记忆写死。不存在报告声称值时记录未声称，不造第三个值。
 
-1. 从正式 carriers 重建原子 claim 列表与 requirement kind。
-2. 对每个 score-bearing identity 复核 claim、触发条件、正反条件、正式 runner 配置声明的静态证据 owner/候选可写性契约、runtime ID、权重与归因。C2 `PASS` 只证明该静态 provenance 契约在允许载体中闭合；实际 mount/endpoint 是否按契约建立属于 V2+ 观察证据，未授权或未运行时必须阻断 `evaluation_certified`，但不自动否定已闭合的静态 C2。若连静态 owner/writeability 契约也无法建立，P1/P2/C2 均 `BLOCKED`。
-3. 建立 carrier inventory：正式 source 的规范化路径、版本/digest、precedence、consumer 与完整性策略；不能用路径子串、display name 或候选自报 source 代替 exact identity。
-4. 检查遗漏、重复、空集自证、fallback、锚点污染、跨模式漏召和不受信 evidence。
-5. 将新发现写入现有 issue 台账。tests-side 问题返回 P1–P4 修复；冻结路径问题记 `OUT_OF_SCOPE/BLOCKED`。
+按实际 schema 核 source→manifest（适用时）→runtime→result exact-once、真实 loaded path、遗漏/重复/alias，以及 criterion→bucket/group→dimension→reward 的实际权重、分母、硬前提、归一化与封顶。只核行权重和或 grep 装饰器不够；部分分还核满分可达性、互斥子条件和前提缺失不被其他子分补满。不自创总分阈值、clip、veto 或 SDK 注册形式。
 
-## 5. C3 — 独立 Expected-value 复算
+正式已有/要求 validator 时核真实接入与适用漂移负控；否则完成合法结构/契约核验，不为Skill偏好新增入口门或未知schema字段。修复/交付范围内已确认的 tests 内正式入口/runner/shim/helper/config/instruction 缺陷必须按正式依据留证修复并真实重验，不因名称冻结，不将可合法修复的内部验证入口缺陷冒称外部环境阻塞；tests外或用户明示禁改入口保持只读记录，外侧相关允许发现直接登记同根 QA。具体技术见 [RewardKit](seal-rewardkit.md) 或 [legacy](legacy-claw-eval.md)。
 
-1. 从正式且允许读取的 instruction/resources/carriers 重新计算 checks 常量、边界值、集合、计数、排序、哈希、权重链与总 reward。
-2. 三方比较：独立复算值、tests 实现/manifest/quality 声称值、`qa_report.md` 投影值。
-3. 使用与原实现不同的推导路径或最小独立脚本；不得只调用被审实现再抄回结果。
-4. 语义 claim 复核判定边界与 evidence sufficiency；可确定事实不得交给 judge 代算。
-5. 无法独立推导时写 `BLOCKED/N/A`，不得由 Oracle、nop、judge、GT 或历史题数值填空。
-6. 任一不一致成为 issue，并回到 P1–P4；修复后旧 C1–C3 结果全部失效。
+## 4. 全题逐判据双向与等价审核
 
-## 5a. C2a — 逐判据对抗反例审计（静态审查看不见的行为缺陷）
+为全部实际评分判据逐项记录：identity/源码位置、helper/parser/输入域/排除分支、适用反例轴、输入引用、正式预期、实际结果、方法/run/版本、结论及未验证原因。确定性项给合法 PASS 与违规 FAIL；部分分和语义项记录正式尺度上的预期分/范围及差异，不能统一要求每个违规项必为零。实际 judge 依 [judge 链路](judge-chain.md) 完成相关真实对拍，不用 stub 认证语义。
 
-C2/C3 是静态一致性检查——复算值、checks 常量、manifest、报告四方自洽就判"正确"，于是"四方一致但错"（钉死的合法范围、写死的缺失期望、伪回执照样满分）与"运行时才暴露"的问题（乱码文件名使正确 agent 判 0、真实 evidence 是 list 而解析只收 dict）全部漏网。C2a 只做行为对抗，对**每条** float 判据穷举构造最小反例并尽可能实跑，不抽查：
+沿实际适用轴执行，不凑固定数量：
 
-1. **阶段 0 版本指纹**：审计开始前对 `tests/**` 计算 digest（TESTS_HASH），记录 angle_id 集合与权重、`@criterion` 名集合、reward 权重；与同轮 C2/C3 报告的指纹比对，不一致即停止报错——错版对拍（skill 谈 A、算法谈 B）比不审计更糟。
-2. **under-strict 方向**（该低分却得高分）：每条判据构造一个"不该过但可能过"的最小交付物并实跑——空/占位交付、伪回执（键在值错）、同数量不同身份（替换成员保条数/哈希）、抄关键句不内联实质、位置无关拍平扫字、关键词堆砌、计数键存在不查值、解析器少字段（真实 tool_call 但顶层无 path/name）。实际给高分即缺陷，记录输入/期望分/实际分/漏洞行。
-3. **over-strict 方向**（该高分却得低分）：先过**等价解枚举门**——每条含硬编码字面量/正则/`==`/精确路径端口变量名的判据，必须构造 ≥3 个合法等价形态实跑（字面量 vs `$VAR` vs `${VAR}`、钉死变量名 vs 同义名、`$(which x)` vs `$(command -v x)` vs 绝对路径、中英同义完成态词、JSON 键序/CSV 列位置合法置换、合法内容在其他章节）；任一等价形态丢分即错杀。穷举未做完不得声明"无 over-strict 漏洞"——算法反馈的最大漏检就是"抓到别的角度，没抓到最典型的合法等价写法"。
-4. **生成式双反例门**：疑似生成式对象的 float 判据，构造"内容深 vs 仅关键词堆砌、表层字段全部一致"的 twin（内容必须取自 resources 载体的真实正反例，不得现编；无可抽载体时记 W 跳过，不虚报）；分差 <0.3 = 浅代理生成式判定，建议改 likert judge。twin 差异限定在内容质量单一维度。
-5. **运行可达性**：对每个路径常量在真实任务树上解析——常量值对（哈希、计数）≠ 运行可达（按路径取得到）；乱码文件名/层级错/大小写差导致 freeze 落空、正确 agent 判 0 即缺陷。
-6. **环境依赖期望对拍**：依赖运行时环境的期望值（工具装没装、时区、探测顺序）与环境实际状态对拍，硬编码且与实测冲突即缺陷。
-7. **实跑方法**：构造输入放临时 workspace 直接调判据；rewardkit 导入不可用时用 shim 去除装饰器副作用保留函数本体；判据读固定绝对路径/外部服务不可行时读函数体逐分支推演并标注"静态推演"。静态推演必须列反例本体与预测分，否则视为未审。
-8. **反例最小化**：每个反例只改一个维度，证明是判据漏洞而非多因素叠加；同一判据双向都测，不因一边成立放过另一边。
-9. **产出下限**：报告发布"实跑覆盖 M/N"与"等价解覆盖 M/N"统计及未实跑清单与理由；无法实跑的逐条说明，不得用"已覆盖"含糊带过。全表零反例时重新逐判据检查，确属穷尽则逐条说明。
+| 轴 | 至少核实的区别 |
+|---|---|
+| 空集与顺序 | 动作缺席不能因 all(...) 获过程分；先清理后确认与确认后清理；负向安全空集不强造正向动作 |
+| 对象与字段身份 | 同数量换成员、同总和错字段、目标对象与其他对象；header hash 不代替正文事实，不制造全内容 hash 碰撞 |
+| 位置与语境 | token 在正确对象、引用正文、否定表达或错误字段中的意义不同 |
+| 锚点污染 | tool result 仅含 endpoint/路径、读后叙述“将调用”、真实 call；没被拒绝不证明规则被采用 |
+| 过程主体/副作用 | 权威输入推导集合、同主体 before/after；适用首次写入、发送、清理锚点和先后顺序 |
+| 合法等价 | 真实合法解、表达、键序、格式等变化；不只测代表解，不为唯一事实造多个值 |
+| 控制权与 policy | 候选合规但外部条件未触发；阈值、优先级、must-call 与事实源回到正式来源 |
+| 语义浅代理 | 实质履约与关键词堆砌对拍；依据正式尺度裁决，不自创统一 0.3 分差 |
+| 解析与权限 | 适用嵌套、编码、Unicode、路径规范化、伪造证据和服务失败 |
 
-C2a 发现的缺陷与 C2/C3 交叉印证：他报已标 W 的升 E 并说明互补；已标 E 的引用编号不重复写。修复后从 C1 重启闭环。
+记录逐项适用性依据，报告 **已实测/适用总数**，列未验证项及影响；不把不适用计进已测，静态推演另列。零已发现缺陷不等于漏审，零逐项探针记录才是执行缺口。适用反例未测不能用“低风险”删除；不宣称穷尽所有输入。确认缺陷保留最小失败复现、合法正例与最终新鲜回归；未验证不标 FIXED。
 
-## 6. C4 — QA 平账与状态对账
+## 5. 真实输入解析对拍
 
-机械核对以下恒等式与派生关系：
+凡评分消费 conversation/trajectory/tool result 或文档转换产物，完整验收必须以合法正式导出的真实输入样本对拍相关解析器，支持模式依实际 runner 合同，不强套历史双模式 ATIF。核根类型、actor、name/arguments/result 关联、真实文件名及目标对象；区分工具未调用、字段缺失、合法空结果、服务失败与解析失败。正向样本要求提取出应有目标集合，合法负向空集不强行非空。
 
-```text
-N0 = R0 + T0
-A = AR + AT
-D = DR + DT
-R1 = R0 + AR - DR
-T1 = T0 + AT - DT
-N1 = N0 + A - D
-错误率 = F / N0
-漏召率 = A / (N0 + A)
-```
+补适用 list/dict、嵌套 group 文本、编码/规范化路径探针。自产 fixture 只能证明给定 fixture 行为，不能证明真实 rollout 兼容。没有合法真实样本时，先沿允许来源查取或按已授权模式补证；仍缺记真实兼容性 UNVERIFIED，不启动未经授权的新候选、不进入或搬出 .pipeline。独立非写入QC可静态核正式样本与实测记录；本次实际作业允许执行时，可按 [§1.1 质检可执行核验，但题包不写](qc-exceptions-and-admission.md#11-质检可执行核验但题包不写) 经已有有效隔离入口独立对拍必要已获准parser/回归/verifier-only。不参与返修、不生成/应用补丁、不写任务QA；整个任务含tests/QA/cache/日志/字节码/结果及别名/链接/挂载落点须实际文件系统只读边界，-B/cache开关不替代防写。仅题包外独立已获准scratch，不作源码副本/补丁/staging；先核入口/import/collect/子进程副作用，无安全入口不动态运行并移交协调者，后者仍守自身权限/隔离。可非破坏性核环境、局部解析允许文本/内存探针及运行Skill检查；CONSULT/READ_ONLY及默认静态REPORT_QC不运行，不新增安装/配置修改/重启/候选/网络/外部judge权。运行细则见 [runtime-acceptance.md](runtime-acceptance.md)。已采用两遍 QC 的字段族/覆盖门仍按其更具体要求，不因当前实现未消费某字段而豁免。
 
-同时检查：
+## 6. 返修、freshness 与独立复核
 
-- 每个 `FIXED` issue 都有最终授权文件中的修复、常驻回归和 `FRESH/PASS` run；
-- 每个 blocker 都反映到受影响的状态，且没有被 `overall_status` 隐藏；
-- `F/AR/AT/A/DR/DT/D` 与 issue/case 明细一致，无法可靠重建时为 `N/A`；
-- C1–C3、P0–P4、三分归因、allowlist diff 与报告时间/digest 一致；
-- `test_delivery_handoff_ready` 与 `evaluation_certified` 分开派生；V1 PASS 不冒充 V2+ certification；
-- platform/external status 只反映真实授权和已发生动作。
+每次实质变更关联义务、parser/scorer、prompt/evidence、注册、权重和必需run，按技术依赖标受影响证据STALE。合法变更tests内正式instruction或外部有权负责人变更tests外instruction、导致正式合同变化时，记录授权正式来源、版本前后、写前preimage及实际diff；由未接触隐藏答案的设计角色从授权正式来源独立重推并双冻结受影响范围，旧相关义务/评分设计及运行证据STALE后真实重验并独立复核。tests外instruction仍只读移交，已接答案reviewer不承担新设计角色；不以GT污染修法，不用新instruction追认旧candidate失败或放宽仍有效义务。任何报告变更均核对应内容；纯排版或仅归因变更也重核报告，但技术依赖未变可复用 FRESH 证据，不空重跑 verifier。加载、全局合同或聚合变化时扩大重验到真实影响范围，不机械每轮从 C1 全题重启。
 
-任何矛盾都使报告未闭合。只降级受影响结论，不按“多数通过”认证。
+现行报告接口按 [报告合同 §7.1–7.4](verification-and-reporting.md#7-报告与qc接口)。协调者对所有本轮报告写入做质量自查。FULL_ACCEPTANCE/UNATTENDED 有报告写入须未参与修复的非写入 QC reviewer 独立核本轮质量；无 always-failing、零缺陷或无 tests 修改仍核事实、状态、运行和限制。完整验收 reviewer 同时核全题覆盖及当前版本，标准局部仅按影响/风险复核，不新增全题独立门。先由作业员完成主动自查修验、实质报告及报告自查，再派 reviewer 实际读原有权威 QC 主文档及已采用条款，核当前 tests、QA 与相关外侧记录并逐项反馈。确认授权 tests/报告错误由作业员实际修复、补适用验证、更新证据并独立复检，不只记录意见；STANDARD 完整验收也须独立复核，明确直到 pass/完成交付按请求范围持续到当前版本实际通过或真实停止，局部默认门与其他作业上限不变。反馈返修复核对应结论，最后仅追加准确回执不无限自指。兼容且依赖未变的分项证据可组合并给依赖矩阵，不冒称一次全量 run，不拼不兼容评分版本的 PASS。协调者自查不是独立复核，模型投票不是裁决。
 
-## 7. 冲突与重启策略
+交付/首次独立QC前按 [回顾登记](verification-and-reporting.md#731-回顾登记先对账不能把漏写当灭失) 对账本次及相关既有问题、反馈、实际变更、不改/撤回决定和验证，核漏项、来源及事后登记；返修只核新增/受影响项，局部/只读依上限，不凭回忆造历史、不倒填保全、不重复计F/A。核 issue—最终授权文件—正反例回归—正式 run—报告终态一致；复用现有技术表、issue 与轮次引用，不复制第二套台账。每个本轮确认缺陷/实质修法保留正式要求/精确位置、实际断言、反例与独立预期、观察/归因、写前完整上下文、实际 diff/终态、适用验证/run/版本/freshness及未证责任；静态发现不虚构旧 Agent 失败，推演/未执行标 NOT_RUN，未验证不标 FIXED+FRESH。累计指标逐身份/根因平账，指标 N/A 不自动否定技术结论。REPORT_QC 明示窄范围优先；未指定时分别审本轮质量与适用历史 A/B，历史层核反馈、实际断言、正式可推导性、跨轨迹行为、真实旧修法和终态，不用候选低分代替归因。质量关键主张缺证 UNVERIFIED、确证错误 FAIL；准确报告技术/历史未证可质量 PASS，但不等于技术/历史 PASS。
 
-优先级依次为：当前正式规则/schema/runner → P0–P4 的可复核事实 → C1–C3 原始证据 → QA 报告摘要。摘要永远不能覆盖底层 evidence。
+## 7. 边界与最终收口
 
-若 C1–C4 任一阶段引发 tests 或报告证据输入变化：
-
-1. 将受影响的旧 run、复算和复审标记 `STALE`；
-2. 回到最早受影响的 P gate 更新契约；
-3. 冻结新差异；
-4. 从 C1 重新完整执行，不能只补跑失败项；
-5. 每轮保留独立 cycle ID、输入 digest、发现、修复和最终 disposition。
-
-禁止把旧 C1、当前 C2、另一轮 C3 和新报告拼成一次 PASS。
-
-## 8. 输出投影
-
-C1–C4（含 C2a）不创建第二份报告。仅投影到根目录 `qa_report.md`：
-
-- canonical V1 command/result/scope/digest；
-- carrier inventory 与完整性结论；
-- 独立 reviewer identity、复审 scope、findings 与 disposition；
-- expected-value 三方比较与不一致；
-- C2a 对抗反例表（angle_id、方向 under/over-strict、反例类型、构造输入、期望分、实际分、结论）、实跑覆盖 M/N、等价解覆盖 M/N、未实跑清单与理由、TESTS_HASH 指纹；
-- cycle/restart 表；
-- accounting/status reconciliation；
-- 四个既有交付状态及其 reason codes/blockers。
-
-最终差异审计仍要求实际 changed paths 属于 actual tests allowlist 加根目录 `qa_report.md`；否则 handoff 不可 READY。
+- 只有协调者单点写整个tests/**与同一根qa_report.md；tests/test.sh、tests/judge.py及tests内runner/shim/helper/instruction/config均可按授权正式依据修复，不另设冻结子集或allowlist审批。tests_allowlist映射本次实际操作范围，默认tests/**+根QA；用户明示局部/只读/禁改/更窄路径限制优先。tests外除根QA均只读移交，包括外侧instruction、runner/shim/helper、业务实现及环境依赖；别名/链接的规范化真实落点若在tests外，不因表面tests路径获写权；根QA仅授权真实同根qa_report.md，不借其别名/链接扩至其他外侧目标。不建sidecar/整题副本，不擅删未知文件；独立QC仍全题包不写。
+- 相关 GT/oracle 按现行双冻结及独立 QC 默认许可核查，修复方不读/不接答案；本次实际作业允许执行时，独立非写入QC可按§1.1经已有有效隔离入口在双冻结及答案输出隔离后直接执行必要合法本地oracle；协调者可在自身权限/隔离内编排已获准运行而不读隐藏答案，只收脱敏状态/引用。秘密不读值，.pipeline全角色禁读/引用/依赖；整个tests写权不授权秘密/GT读取或答案暴露，新普通候选/外部模型上传不因技术清单或无人值守获得许可。
+- 按结论依赖核准入、写前保全与 future_run_plan；旧修改对比依赖权威原task_path，旧行为归因依赖对应旧轨迹，当前修法依赖正式输入、本轮真实preimage/diff/终态及当前必需验证，不捆绑全部遗失历史。原累计基线不可恢复不阻独立当前技术工作；必需旧 task/轨迹缺失仅不准入实际依赖它的历史认证/主张。开工及收口从请求、正式映射/manifest 与 rubric/test 失败标记、允许反馈/既有 artifact、已有 QA 历史核对象，记 history_object_status=APPLICABLE/CONFIRMED_ABSENT/UNDETERMINED、对象/反馈ID、来源版本/已查结果及缺口影响，不扫工作区/禁区。确认无对象才历史 N/A，报告自 N/A、无 A/B 表或未找到清单不自证；未知或旧材料缺失历史 UNVERIFIED，仅实际依赖历史范围 NOT_ADMITTED；必需性按下述 §7.2.1 核，不自动阻当前完整验收，不删真门、不阻独立本轮修法/质量审核。本轮 preimage 只证明本轮起点、不自动是旧 ORIGINAL_TASK；本轮漏留是 WorkC 生产缺口，合法查源不倒填，相关修法未证。计划、ADMITTED、辅助 checker 不认证 PASS。
+- 完整验收的通用顺序按 [作业员执行 SOP](execution-sop.md)：先作业员自查修验及报告自查，再独立 QC 实读质检文档、逐项反馈、作业员核实返修复验复检；明确直到 pass/完成交付不需另说无人值守。默认无人值守另按 [闭环](unattended-mode.md) 自动只读核当前 task 外侧相关允许材料并记 QA，不扫工作区。无显式预算不按轮数停，合法修复/补证路径尚存则继续。历史可恢复先合法恢复，确已穷尽才记EXHAUSTED，列精确来源/版本、实际动作/结果、缺失对象、受限主张、门控依据/影响及责任/恢复条件；无新来源、权限或相关版本/依赖变化，不每轮复查已穷尽历史，继续当前完整修复、真实验证和独立QC，不把非必需历史缺口判作模式整体STOPPED_BLOCKED。真正影响本次必需门且无法继续才STOPPED_BLOCKED，显式预算耗尽STOPPED_BUDGET。
+- tests 外相关允许发现直接写同根 QA 的精确位置、证据、影响、责任与移交，不改外侧、不等待外部先修、不把全部外侧缺陷变成交付门；只有实际依赖的必需项限制对应结论。移交不算修复，不妨碍独立可完成范围继续，也不冒称受阻范围已完成。tests、本轮报告质量 QC、历史失败 A/B 归因 QC、候选正式评分与整题外部阻塞分别报告，逐层给范围/依据；FULL_ACCEPTANCE/UNATTENDED 有报告写入时质量 QC 及独立审核为报告/模式交付必需项，历史对象状态、历史审核状态和当前必需性按 [报告合同 §7.2](verification-and-reporting.md#72-先发现对象不能用报告自证不适用) 及 [§7.2.1 历史未证只限制实际依赖的结论](verification-and-reporting.md#721-历史未证只限制实际依赖的结论) 分判，仅限制实际依赖的历史认证或当前主张，不混为总门。复用验收矩阵required、权威来源/版本/采用依据及实际dependency，不新增门控状态；明确历史验收请求、正式采用且适用的历史条款或当前主张真实依赖旧失败/旧修改才需相应旧证据。FULL_ACCEPTANCE、无人值守、模板历史栏或旧候选失败本身不创设历史门。对象存在/未知/灭失不自证当前必需性；无当前历史必需门时，当前FULL tests可凭正式输入、本轮真实preimage/diff/终态、真实必需运行、当前报告和真实独立QC闭合自身门后PASS/UNATTENDED_COMPLETE，历史仍UNVERIFIED，不静默降为LOCAL，不冒全历史通过。明确历史门保留来源/版本/对象及影响，未闭合则不称原请求全要求完成。当前引用错误/未证旧行须补证或有据纠正/撤回依赖并保留原行、来源/原因，不擦除或换标签逃避当前错误修法/分类；本轮漏留preimage、漏登记或缺必需run仍是WorkC生产缺口，合法恢复不倒填免责。人工/平台仅凭真实回执、不代签或自动提交。
+- 不恢复报告长度中位数、随机固定抽样、零发现强造缺陷、统一 SDK/两 attempt/三等价样本/80%/LLM 占比或分差阈值。已正式采用的外部门仍严格执行，技术轴覆盖不替代那些门。

@@ -1,494 +1,212 @@
-# {{task_id}} QA 报告
+# {{task_id}} QA报告
 
-## 0. 结论卡
+> 仅协调者在授权写作业使用本模板，同题只维护根 `/qa_report.md`；独立非写入QC不写本报告或题包任何路径，回执仅回复，由协调者核脱敏内容后记录；REPORT_QC默认静态不运行，角色能力不生操作权。第一行固定 `# <task_id> QA报告`。核心章节保留；条件模块按本次作业/正式采用规范展开，无适用模块在结论中说明即可，不机械填空表。首次独立设计后再对账旧结论；QC 行可以先作为待证命题读取。保留已有逐行 A/B 身份与历史事实，不为格式强迁移或删除历史。未变证据按 ID 引用，不重复粘表；所有实质结论有正式来源、评分路径、反例或 run 支撑。实际报告不留占位符、空结论或秘密。
 
-| 字段 | 值 |
-|---|---|
-| overall_status | {{PASS / FAIL / PARTIAL / BLOCKED / NOT_RUN}} |
-| dataset_item_status | {{ACTIVE / DEPRECATED / ABANDONED / NOT_APPLICABLE；quality-prompt 配对违规时先 DEPRECATED/ABANDONED}} |
-| test_delivery_handoff_ready | {{YES / NO / BLOCKED / NOT_APPLICABLE}} |
-| evaluation_certified | {{YES / NO / BLOCKED / NOT_APPLICABLE}} |
-| platform_submission_ready | {{YES / NO / BLOCKED / NOT_APPLICABLE}} |
-| external_submission | {{NOT_REQUESTED / NOT_AUTHORIZED / READY_NOT_SUBMITTED / UPLOADED_NOT_SUBMITTED / SUBMITTED_UNCONFIRMED / SUBMITTED_CONFIRMED / FAILED / BLOCKED / NOT_APPLICABLE}} |
-| blocking_issue_ids | {{IDs / none}} |
-| C1 canonical V1 hard gate | {{PASS / FAIL / BLOCKED / NOT_RUN；command/run/digest refs}} |
-| C2 independent design/carrier re-audit | {{PASS / FAIL / BLOCKED / NOT_RUN；reviewer/scope refs}} |
-| C3 independent expected-value recomputation | {{PASS / FAIL / BLOCKED / NOT_RUN；comparison refs}} |
-| C4 QA accounting/status reconciliation | {{PASS / FAIL / BLOCKED / NOT_RUN；reconciliation refs}} |
-| report_generated_at | {{ISO-8601 with timezone}} |
-| reviewer/tool_version | {{value}} |
-| template_version | 1.4 |
-| human_review_status | {{PASS / FAIL / PARTIAL / BLOCKED / NOT_RUN / NOT_APPLICABLE；无人工证据不得写 PASS}} |
-| technical_lead_review_status | {{同上；不得由代理代签}} |
-| trajectory_stage_status | {{同上；不得由本地 reward 代替}} |
-| algorithm_acceptance_status | {{同上；须有正式验收证据}} |
+作业员按 [WorkC 作业员执行 SOP](../references/execution-sop.md) 主动查找、确认、修复授权 tests/根 QA 并真实验证。内外问题处置以 [SKILL §2](../SKILL.md#2-先选本次作业固定验收范围) 为准，详细登记按 [报告合同 §2](../references/verification-and-reporting.md#2-状态归因与证据范围)：修复/交付范围内已确认的 tests 内缺陷必须实际修复、完成适用合法验证，并在同根 QA 写实际修改和结果；记录、建议或移交不替代返修。明示只读、局部、指定运行及真实证据/安全限制仍优先。本轮报告写入须按 [报告双层审核与生产责任](../references/verification-and-reporting.md#7-报告与qc接口) 自查/复核；作业员自查不等于独立 QC，真实 reviewer 回执前不填独立 PASS。本轮质量为核心，历史 A/B 为适用分支；保持当前结论与轮次记录两层，不增第三份报告或审批台账。
 
-{{用 2–4 句说明完成、未完成、弃用/阻塞和不能声称的事项。}}
+## 当前结论与本次范围
 
-## 1. 任务状态与固定边界
+- **本次作业与结论**：{{CONSULT/READ_ONLY 不落盘；LOCAL_REPAIR/FULL_ACCEPTANCE/REPORT_QC/RUN_ONLY；范围及完成/待验证/FAIL/BLOCKED}}
+- **执行模式与闭环状态**：{{STANDARD/UNATTENDED；唯一当前task下仅“无人值守”且无明确更窄/只读/禁写限制时默认FULL_ACCEPTANCE及整个tests/**/同根QA写许可，worker将tests_allowlist映射为实际操作范围（默认tests/**+根QA），不另设冻结子集或allowlist审批；早前仅作业标签不阻新默认；显式预算或无预算/当前轮、完成或真实停止原因；流程结束不自动PASS}}
+- **已证与未审范围**：{{本轮范围、相关共享依赖、复用历史范围、尚未审的整题部分；不从局部推全题}}
+- **测试侧交接**：{{可交接已验证补丁 / 可交接补验 / 不可交接；精确依据}}
+- **整题技术验收**：{{PASS/FAIL/未完成/本次未请求；仅完整范围证据闭合时 PASS}}
+- **连续执行与停止核查**：{{未闭合必需项的下一可执行动作；已安装环境未就绪时实际自主启动/就绪检查/续跑结果；真实受阻列已尝试动作、脱敏结果、为何无剩余合法路径及恢复条件。还有获准可执行动作就继续，不以填写此栏或报告PASS结案}}
+- **独立审核证据模式**：{{strict_static及实际入口/对象/原生结论；需要时另列含轨迹入口或WORKC_RUNTIME_REVIEW及采用依据/真实回执。PASS_STATIC_SCOPE不代运行或整题PASS；明确外部必需门不可内部替代}}
+- **本轮报告质量 QC**：{{PASS/FAIL/UNVERIFIED/NOT_RUN；本轮新建或更新QA即适用，不因无always-failing清单N/A；实际审核方式、当前版本、已核主张/未证范围；作业员质量自查记真实结果但不称独立QC PASS，独立状态须有reviewer真实回执；标准局部独立审核非必需可说明，不新增全题门}}
+- **历史失败 A/B 归因 QC**：{{PASS/FAIL/UNVERIFIED/N/A/本次未请求；history_object_status=APPLICABLE/CONFIRMED_ABSENT/UNDETERMINED只描述对象，不等于审核状态或必需性；历史对象及查源依据；确认无对象才N/A，未知或对象存在而缺旧证据保持UNVERIFIED，未找到材料非N/A}}
+- **历史门依据与当前交付结果（分别列）**：{{引用本次矩阵的required、权威来源/版本、采用且适用的条款或实际依赖主张及缺口影响；明确历史验收请求/正式采用的适用条款/当前主张真实依赖旧失败或旧修改时才需相应旧证据，不另设门控状态。FULL_ACCEPTANCE/无人值守/模板栏/旧候选失败本身不创设历史门；非必需历史UNVERIFIED不阻当前FULL tests+当前报告+真实独立QC自身必需门闭合后的PASS/UNATTENDED_COMPLETE，不降为LOCAL；明确历史门未闭合则不得称原请求全要求完成，不预填实际未取得的验证/QC PASS}}
+- **回顾登记与对账**：{{交付/首次独立QC前已核本次及相关既有发现、反馈、实际变更、不改/撤回决定、验证与QA issue/轮次；已查范围/来源、漏项及补登记issue引用、登记时间与可核原事件轮次；事后登记不伪称写前保全、不重复计F/A；无漏项简记，未恢复证据及错误修法分别列；返修仅核新增/受影响项，不复制台账；补齐不代表QC PASS}}
+- **历史对象发现与查源**：{{正式请求/映射/manifest标记、允许反馈与artifact、QA历史中的对象/旧修法主张；实际已查路径/版本/结果及剩余缺口；不以本报告N/A或无表自证；无未知材料时简短引用，不重复查找}}
+- **候选正式评分**：{{已评分/未请求/未运行/阻塞；分数不等于 grader QA}}
+- **正式来源与版本**：{{instruction/persona/policy/fixtures/schema/runner，精确位置及摘要}}
+- **架构与授权**：{{legacy/adopted-0917/other-rewardkit/hybrid/unresolved；写集合硬锁整个tests/**与同一根qa_report.md；tests/test.sh、tests/judge.py及tests内runner/shim/helper/instruction/config均可测试侧修复，不另设冻结子集或allowlist审批；tests_allowlist映射本次实际操作范围，默认tests/**+根QA，明示局部/只读/禁改/更窄路径限制优先；tests外除根QA只读移交，包括外侧instruction/runner；规范化真实目标在tests外的别名/链接不能写，根QA仅授权真实同根qa_report.md，不借其别名/链接扩至其他外侧目标；运行模式/网络权限另核，整个tests写权不授权秘密/GT读取或答案暴露}}
+- **独立双冻结与质检默认许可**：{{obligation_freeze_ref / scoring_design_freeze_ref，范围/正式版本/时间；qc_role仅实际未参与修复的独立reviewer（未派发/不可用如实记，不填作业员） / qc_read_scope / qc_permission_basis=WORKC_DEFAULT / applicable_clause或明确QC必要性依据 / actual_reads；无需逐题读取批准；不记录答案，.pipeline始终禁读}}
+- **材料开工准入**：{{admission_status=ADMITTED/NOT_ADMITTED/N/A；admission_scope / historical_requirements / preimage_refs / future_run_plan / admission_evidence_refs / admission_owner / admission_reason；准入不是最终PASS}}
+- **规范采用与范围变化**：{{本次采用/未采用/未知规范及依据；执行中范围调整的正式原因}}
+- **当前缺陷与限制**：{{确认缺陷、关键未决风险、建议、范围外问题分别列；外侧无关/建议不阻tests通过，真影响必需判据则对应BLOCKED/UNVERIFIED/FAIL}}
+- **tests外只读检查与整题外部阻塞**：{{显式无人值守或本次清单确需外侧证据时填写；否则记本次不适用/未请求，不为填栏扩标准局部巡检门。当前task tests外相关允许正式材料的已查路径/范围/版本与证据；未发现也记范围；问题影响/责任/移交及独立QC核查；tests侧通过与整题外部阻塞分报，移交不算修复、不冒UNATTENDED_COMPLETE；不扫工作区、不读.pipeline/秘密，GT及oracle答案仅独立QC核}}
+- **本轮与历史差异**：{{本轮实际写入；起始已有异常/用户或平台变化、来源未知及其影响；不宣称未知历史零变化}}
+- **外部阶段**：{{仅相关时列人工/负责人/算法/平台真实回执或未请求；不代签}}
 
-| 维度 | Requested | Actual | 依据/偏差原因 |
-|---|---|---|---|
-| target | {{test-delivery / test-harness / package}} | {{value}} | {{value}} |
-| mutation | {{tests-allowlist-plus-report / report-only}} | {{value}} | {{value}} |
-| execution_ceiling / reached | {{V0–V5}} | {{V0–V5}} | {{value}} |
-| delivery | {{value}} | {{value}} | {{value}} |
-| architecture | {{legacy / seal-rewardkit-0917 / hybrid / unresolved}} | {{value}} | {{真实加载链证据}} |
+### 本次验收要求与证据矩阵
 
-- task_id：{{value}}
-- final_worktree：{{path/commit/snapshot}}
-- maximum_writable_scope：`tests/**` 与根目录 `/qa_report.md`
-- actual_test_allowlist：{{必须是 tests/** 的子集}}
-- required_report_path：`/qa_report.md`（完成/返修/作业交付自检必须本轮生成或更新）
-- frozen_paths：除实际 test allowlist 与 `/qa_report.md` 外的全部题包路径
-- prohibited_runtime_dependencies：{{value}}
-- external_action_authorization：{{source/time or none}}
-- rule_sources / claim_ledger：{{versions, carriers, mandatory claims, advisory items, blocked claims}}
-- current_sop_source / checked_at / displayed_updated_at：{{URL、核对时间、页面显示日期；不自行补年份}}
-- applicable_batch / workflow_stage：{{初次修复 / 轨迹打回返修 / 负责人复核 / 算法验收；适用依据}}
-- designated_auxiliary_skill / version / evidence：{{正式要求的辅助 skill；未运行不得写已通过}}
-- delivery_inventory：{{legacy rubric/test，或 0917 manifest + process/output/safety checks + optional quality/prompt/reward，以及 qa_report.md}}
-- secret_handling：{{确认报告和日志未写 token/cookie/password/Authorization/秘密值；仅列变量名或 secret reference}}
-- prohibited_input_audit：{{确认未读取 ground_truth.json；tests/** 与 qa_report.md 对 `.pipeline/` 内容零引用，或列出已删除引用/冻结残留路径但不读取或转述其内容}}
-
-## 2. 基线、结构库存与一致性
-
-### 2.1 基线
-
-| 字段 | 值 |
-|---|---|
-| baseline_kind | {{original package / normalized directory / pre-fix worktree / commit / platform snapshot}} |
-| baseline_source / id | {{value}} |
-| digest_algorithm / digest | SHA-256 / {{value}} |
-| artifact_path_normalization | {{path separators/case policy; archive member policy; exclusions; traversal/duplicate checks}} |
-| captured_at | {{ISO-8601}} |
-
-### 2.1a P0 Scope Card 与 P1 Baseline Contract
-
-| 项目 | 记录 |
-|---|---|
-| P0 scope card | {{target / mutation / actual tests allowlist / V0–V5 authorization / delivery / prohibited inputs / dynamic isolation preconditions}} |
-| baseline revision / immutable source | {{baseline revision ID；正式来源变化时新建 revision，不覆盖旧基线}} |
-| formal claim carriers / precedence / digests | {{逐项 carrier、版本/日期、SHA-256、precedence}} |
-| runner / aggregation / runtime loader | {{entry command、loader path/digest、registry/aggregation path、version}} |
-| score identity baseline | {{R0/T0/N0、raw→runtime identity mapping、reliability}} |
-| frozen authority inputs / ownership | {{path/digest、producer、candidate reachability/writeability、mount/endpoint}} |
-| candidate / service / verifier evidence roots | {{each root, producer, writeability, separation status}} |
-| P1 gate disposition | {{PASS / BLOCKED / DEPRECATED / ABANDONED；缺项不得做 profile-specific 修复}} |
-
-### 2.2 0917 结构库存（legacy 填 NOT_APPLICABLE，不机械迁移）
-
-0917 canonical 结构固定为唯一 `tests/criteria_manifest.yaml`，以及 `tests/process`、`tests/output`、`tests/safety` 每维恰好一个 `checks.py`；`tests/process/quality.toml` 与 `tests/process/reward.toml` 可选。quality 存在时，同目录必须恰好一个 `react_prompt.md`。
-
-| artifact / dimension | expected canonical path | discovered raw paths | canonical count | status | SHA-256 / reason |
-|---|---|---|---:|---|---|
-| manifest | `tests/criteria_manifest.yaml` | {{paths}} | {{0/1/>1}} | {{PASS/MISSING/DUPLICATE/AMBIGUOUS/NOT_APPLICABLE}} | {{digest/reason}} |
-| process checks | `tests/process/checks.py` | {{paths}} | {{0/1/>1}} | {{status}} | {{digest/reason}} |
-| output checks | `tests/output/checks.py` | {{paths}} | {{0/1/>1}} | {{status}} | {{digest/reason}} |
-| safety checks | `tests/safety/checks.py` | {{paths}} | {{0/1/>1}} | {{status}} | {{digest/reason}} |
-| process quality | `tests/process/quality.toml` | {{paths}} | {{0/1/>1}} | {{ABSENT_ALLOWED/PASS/DUPLICATE/AMBIGUOUS/INVALID/NOT_APPLICABLE}} | {{digest/reason}} |
-| process prompt | `tests/process/react_prompt.md` | {{paths}} | {{0/1/>1}} | {{NOT_APPLICABLE/PASS/MISSING/DUPLICATE/AMBIGUOUS/TEMPLATE_INVALID}} | {{digest/reason}} |
-| reward config | `tests/process/reward.toml` | {{paths}} | {{0/1/>1}} | {{ABSENT_ALLOWED/PASS/DUPLICATE/AMBIGUOUS/INVALID/NOT_APPLICABLE}} | {{digest/reason}} |
-
-- structure_inventory_digest：{{value}}
-- dimension_exactly_one_checks_status：{{PASS/FAIL/BLOCKED/NOT_APPLICABLE}}
-- structure_missing / duplicate / alias / case_collision：{{exact paths and issue IDs / none}}
-- structure_repair_authority：{{formal source and allowlist / none；不得补空文件、任选副本或猜加载目标}}
-- deterministic_only_status：{{YES/NO/NOT_APPLICABLE；quality 缺席合法时 prompt 不得作为活跃输入}}
-
-### 2.3 Quality–Prompt 原子配对与弃用
-
-| 字段 | 值 |
-|---|---|
-| quality_path / status / digest | {{canonical path / status / SHA-256 or NOT_APPLICABLE}} |
-| prompt_path / status / digest | {{canonical path / status / SHA-256 or NOT_APPLICABLE}} |
-| quality_prompt_cardinality | {{0:0 deterministic-only / 1:1 / invalid details}} |
-| judge | {{必须精确为 `react` / NOT_APPLICABLE / actual invalid value}} |
-| prompt_template | {{必须精确为 `react_prompt.md` / NOT_APPLICABLE / actual invalid value}} |
-| prompt_template_schema | {{PASS / FAIL / BLOCKED / NOT_APPLICABLE；必需变量、格式、非空}} |
-| static_path_vs_runtime_loaded_path | {{MATCH / MISMATCH / UNVERIFIED / NOT_APPLICABLE}} |
-| static_digest_vs_runtime_digest | {{MATCH / MISMATCH / UNVERIFIED / NOT_APPLICABLE}} |
-| pairing_status | {{PASS / FAIL / BLOCKED / NOT_APPLICABLE}} |
-| deprecation_trigger | {{missing / duplicate / ambiguous / judge mismatch / prompt_template mismatch / template invalid / none}} |
-| dataset_item_status / disposition | {{ACTIVE / DEPRECATED / ABANDONED / NOT_APPLICABLE；违规时先弃用，不自动生成或猜 prompt}} |
-| responsible_party / handoff | {{value}} |
-
-禁止从历史 prompt、候选、Oracle、known-answer 或其他题目生成/复制/合并/猜测 prompt。配对违规的数据项不得继续声明可交付或可认证。
-
-### 2.4 Manifest–Quality–Prompt–Runtime 一致性
-
-| 检查 | 状态 | evidence / mismatch |
-|---|---|---|
-| manifest 唯一且 schema 可解析 | {{status}} | {{refs}} |
-| manifest dimension/scorer/result ID ↔ 三维 checks 注册 | {{status}} | {{refs}} |
-| manifest weight/source/evidence ↔ 正式 claim | {{status}} | {{refs}} |
-| quality criterion ↔ manifest quality row | {{status}} | {{refs}} |
-| quality judge/prompt path/digest ↔ runtime loaded input | {{status}} | {{refs}} |
-| checks static/import registry ↔ runtime loaded path/digest | {{status}} | {{refs}} |
-| reward config ↔ 实际聚合/归一化/门控 | {{status}} | {{refs}} |
-| end-to-end manifest–quality–prompt–checks–reward–runtime consistency | {{PASS/FAIL/BLOCKED/NOT_APPLICABLE}} | {{refs}} |
-
-- manifest–quality–prompt–checks–reward–runtime consistency：{{PASS/FAIL/BLOCKED/NOT_APPLICABLE；与上表及 runtime loaded path/digest 一致}}
-
-`criteria_manifest.yaml`、`react_prompt.md`、维度目录、quality/reward/结构文件本身均不新增 R/T/A 身份；创建、再生成或修改这些载体本身 `A=0`。
-
-## 3. 身份基线、物理定义与计数
-
-### 3.1 数据字典与恒等式
-
-| 符号 | 定义 | 数值 |
-|---|---|---:|
-| R0 | 0917：冻结基线 canonical process quality 中每个可解析 `[[criterion]]` 条目均计 1（重复/缺失 id 仍计并另报 issue）；legacy：被实际评分链消费的稳定 rubric 身份 | {{R0}} |
-| T0 | 0917：三维 canonical checks 中被实际评分链消费的独立最终 result ID；legacy：被实际评分链消费的独立评分 `test_*` | {{T0}} |
-| N0 | R0 + T0 | {{N0}} |
-| AR | 新增且被评分链消费的 rubric/criterion 身份 | {{AR}} |
-| AT | 新增、注册且被评分链消费的 scoring test/check result ID | {{AT}} |
-| A | AR + AT | {{A}} |
-| DR | 删除/合并的原始 rubric/criterion 数 | {{DR}} |
-| DT | 删除/合并的原始 test/check 数 | {{DT}} |
-| D | DR + DT | {{D}} |
-| R1 | R0 + AR - DR | {{R1}} |
-| T1 | T0 + AT - DT | {{T1}} |
-| N1 | R1 + T1 = N0 + A - D | {{N1}} |
-| F | 已确认、修复且适用验证 PASS/FRESH 的独立 issue 数 | {{F}} |
-
-- identity / dedup rule：{{0917 R0 按冻结基线 canonical quality 的可解析 [[criterion]] 条目计数，重复/缺失 id 仍分别计入且另报 issue，不得按稳定 ID 去重；T0、legacy 及 runtime-consumed 库存按实际评分链消费的稳定身份统计；factory multi-ID 按 ID；repeat/retry 不增加}}
-- legacy R0 rule：{{仅实际评分链消费的稳定 rubric；assertion-message-only、错误文本、注释、fixture 字符串或未注册常量为 non-case}}
-- structural-non-identity rule：manifest、prompt、目录、quality/reward 配置及其他结构载体不单独贡献 R/T/A 身份
-- excluded non-cases：helper、fixture、setup、diagnostic、preflight、未注册/未消费项、禁用项、assertion-message-only constants 及 {{others}}
-- raw-to-final identity mapping：{{raw path/ID → runtime-consumed stable identity → inherited/new/deleted/blocked；逐项列出}}
-- baseline reliability / ratio disposition：{{RELIABLE / N/A with reason}}
-- 恒等式例外：{{none / explanation}}
-
-### 3.2 物理、状态与运行时计数
-
-| 快照 | 层级 / 状态 | Rubric/Criterion | Test/Check | 总计 | 条目或异常 ID |
-|---|---|---:|---:|---:|---|
-| 基线 | physical definitions | {{value}} | {{value}} | {{value}} | {{IDs；0917 quality 按物理 criterion 条目列出}} |
-| 基线 | active inventory | {{value}} | {{value}} | {{value}} | {{IDs/entry refs}} |
-| 基线 | discarded inventory | {{value}} | {{value}} | {{value}} | {{IDs/entry refs + discard reasons}} |
-| 基线 | collected/registered | {{value}} | {{value}} | {{value}} | {{IDs}} |
-| 基线 | runtime-consumed stable identities | {{value}} | {{value}} | {{value}} | {{IDs}} |
-| 最终 | physical definitions | {{value}} | {{value}} | {{value}} | {{IDs}} |
-| 最终 | active inventory | {{value}} | {{value}} | {{value}} | {{IDs/entry refs}} |
-| 最终 | discarded inventory | {{value}} | {{value}} | {{value}} | {{IDs/entry refs + discard reasons}} |
-| 最终 | collected/registered | {{value}} | {{value}} | {{value}} | {{IDs}} |
-| 最终 | runtime-consumed stable identities | {{value}} | {{value}} | {{value}} | {{IDs}} |
-
-0917 `R0` 取冻结基线 physical quality criterion 条目数，不以 active、discarded、registered 或 runtime-consumed 数替代；重复/缺失 ID 逐条计入并另报。弃用或 discarded 条目不得冒充 active/runtime 身份；配对门失败、整项弃用或基线不可靠时两项比率仍为 `N/A`。
-
-异常：orphan={{IDs}}；ghost={{IDs}}；duplicate identity={{IDs}}；duplicate registration={{IDs}}；cross-dimension={{IDs}}；unknown registration={{IDs}}；message-only rubric constants={{IDs}}；invalid mapping={{IDs}}。
-
-## 4. Issue、要求与归因台账
-
-| issue_id | root_cause_key | invariant_id | 类别 | formal source | requirement_kind | 受影响 case / non-case | attribution | 状态 | 修复位置 | permanent_regression_ref | change-impact / refreshed-run | verification_refs | freshness |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| {{ISSUE-001}} | {{key}} | {{P3-I#}} | {{漏检/过松/过严/结构/配对/映射/基础设施/冻结/非case}} | {{source}} | {{MANDATORY/ADVISORY}} | {{IDs/scope}} | {{candidate_failure/harness_noise/infrastructure_failure/not_applicable}} | {{OPEN/FIXED/BLOCKED/DEPRECATED/ABANDONED/ACCEPTED/OUT_OF_SCOPE/DISPUTED}} | {{仅 tests/** 授权位置；只读发现可列冻结证据}} | {{minimal counterexample + positive case + expected + run ID；无法构造则 BLOCKED}} | {{changed path/field → invalidated controls/runs → fresh replacements}} | {{run IDs}} | {{FRESH/STALE/UNVERIFIED}} |
-
-- 已发现 issue：{{count}}
-- mandatory 未满足：{{count and IDs}}
-- advisory 建议：{{count and IDs；未采用不升级为失败}}
-- `F`（FIXED + PASS + FRESH）：{{F}}
-- OPEN / BLOCKED / DEPRECATED / ABANDONED / ACCEPTED / DISPUTED：{{counts and IDs}}
-- 受影响唯一原始 case：{{count and IDs}}
-- 非 case issue：{{count and IDs}}
-- 去重说明：{{same root cause / independent fixes}}
-
-### 4.1 轨迹反馈逐项归因
-
-- feedback_source / task identity / digest：{{refine.json 或正式反馈}}
-- provided_trajectory_refs / inspected / missing：{{列出全部；不将一条冒充全部}}
-
-| test/check ID | 正式条件与计算链 | Agent 实际行为 / 输出 | 跨轨迹比较 | 三分归因 | refine 行为 + 操作/不修改依据 | evidence refs |
+| 要求 ID | 对象/范围 | 正式来源/版本与采用依据（authority） | 必需性（required）/验证/通过条件 | 实际入口/证据 | 状态/新鲜度 | 实际依赖（dependency）/缺口影响与责任 |
 |---|---|---|---|---|---|---|
-| {{ID}} | {{参数→公式→正确值/判据}} | {{逐轨迹事实}} | {{一致/波动/污染}} | {{candidate_failure/harness_noise/infrastructure_failure}} | {{修改授权 test / 不修改正确 test / BLOCKED / OUT_OF_SCOPE}} | {{refs}} |
+| {{REQ-*}} | {{局部/全题/QC/运行/外部阶段}} | {{已采用/未采用/N/A/采用未知及权威依据；历史门列请求或已采用且适用的条款/版本}} | {{required=true/false及依据；既有必需条件，不自创阈值或额外门控状态}} | {{run_id/attempt/静态引用}} | {{PASS/FAIL/NOT_RUN/BLOCKED/UNVERIFIED/N/A；FRESH/STALE}} | {{具体依赖主张、缺口限制的对象与责任，不传播无关阻塞}} |
 
-候选真错只解释测试为何不改，不写候选修复方案。必须改 instruction、环境或冻结 harness 才能消解的问题不得写成已修复。
+仅本次必需项决定本次完成，历史处理以 [§7.2 对象发现](../references/verification-and-reporting.md#72-先发现对象不能用报告自证不适用) 及 [§7.2.1 实际依赖与门控](../references/verification-and-reporting.md#721-历史未证只限制实际依赖的结论) 为准。FULL_ACCEPTANCE/显式UNATTENDED有报告写入时，本轮报告质量QC及当前版本独立审核是报告/模式成功必需项；历史A/B另核对象及审核状态，确认无对象才历史N/A，对象未知或关键旧材料缺失UNVERIFIED，只有具备required/authority/dependency依据的历史要求才门控对应交付，不将所有历史栏视为必需门。非必需历史未证不降当前FULL范围；当前自身必需门闭合可PASS/UNATTENDED_COMPLETE，明确历史门未闭合不得称原请求全要求完成。QC、候选、技术验收各自状态独立；QC FAIL不自动证明grader技术缺陷，只在本次清单明确将QC作为对应交付必需门时门控那个交付对象。已采用外部流程缺必要证据不能称该流程 PASS；未请求的流程不新增为门。局部评分逻辑修复默认正式 verifier 回归；明确只读上限优先。运行细节引用下方证据，不只列总分。
 
-### 4.2 Candidate / Harness-noise / Infrastructure 汇总
+#### 缺历史但不自动阻当前FULL交付的填写示例（示意，非真实任务回执）
 
-| attribution | issue/event IDs | evidence | 对 overall/evaluation 的影响 | disposition |
-|---|---|---|---|---|
-| candidate_failure | {{IDs}} | {{refs}} | {{value}} | {{value}} |
-| harness_noise | {{IDs}} | {{refs}} | {{value}} | {{isolate/retry/fix/block}} |
-| infrastructure_failure | {{IDs}} | {{refs}} | {{value}} | {{handoff/block}} |
+- 旧反馈 `H1` 的正式映射能确认历史对象：`history_object_status=APPLICABLE`；对应旧轨迹未取到，历史归因 `UNVERIFIED`，不写“旧Agent做错了”、A/B已判或历史PASS。对象尚不能确认时改记`UNDETERMINED`，不是`CONFIRMED_ABSENT`。
+- 查源记录逐精确对象填写，例如“正式反馈映射v1所列轨迹artifact：缺失；已有QA R0该反馈行：只含结论，无轨迹引用；获准归档的同对象/版本：未找到”。实际未查不得照抄这些结果；仅真实查尽才记`EXHAUSTED`，列旧行为归因这个受限主张、门控影响、归档责任方和新来源/权限/相关版本变化等恢复条件，不每轮重查。
+- 矩阵`REQ-H1`分别写：`required=false`；authority=本次请求仅当前完整tests交付，已核采用条款未要求历史验收；dependency=当前缺陷及修法独立依据正式输入与本轮证据，不依赖H1旧行为。若实际存在明确历史门或真实依赖，不能照填false，须列对应条款/主张并保留未闭合门。
+- 当前修法行写“主动发现当前判据与正式要求不一致”，引用真实本轮preimage/diff/终态、当前正反例/正式run及reviewer回执，不用新run反证H1旧行为。旧报告如曾无证写“A类/已修”，保留原行与来源，注明纠正原因及当前撤回的依赖，未证旧事实仍保留UNVERIFIED；不能只换标签逃避实际错误修法或分类。
+- 当前结果与历史分别收口：当前FULL tests、当前报告质量及真实独立QC自身必需门实际通过后，才填当前交付`PASS`；启用了无人值守且其自身门闭合，才填`UNATTENDED_COMPLETE`。同时保留“H1历史归因UNVERIFIED，非本次门”，不降为LOCAL，不宣称旧行为/全历史通过；若H1实际是原请求必需门，原请求全要求仍未完成。
 
-## 5. Case 变化与 QA 指标
+### 独立义务与覆盖差异
 
-### 5.1 新增/删除明细
-
-| case_id | 类型 | 动作 | 来源 claim / authority | 原身份或 replacement | 实际消费/绑定 | 适用验证 |
+| 义务 ID | 正式位置/precedence及义务 | 触发/答案空间 | 判定方法/目标证据及控制权 | criterion/rule/runtime身份与聚合 | 对照与正反例 | issue/状态 |
 |---|---|---|---|---|---|---|
-| {{ID}} | {{rubric/criterion/test/check}} | {{add/delete/merge/split/rename/move}} | {{source}} | {{IDs}} | {{yes/no}} | {{run ref}} |
+| {{CLM-*}} | {{来源与独立推导}} | {{唯一/有限/开放、合法集依据}} | {{解析/性质/行为/正式语义judge；producer/owner/backing state/候选mutation path}} | {{源码/加载/注册/实际消费/逐层权重分母引用}} | {{等价/漏覆盖/过松/过严/无依据/未证}} | {{refs}} |
 
-纯改名、移动、描述调整、身份保持格式迁移，以及 manifest/prompt/reward/结构文件创建或变更不计新增。新 criterion 身份计 `AR+1`，新 check result ID 计 `AT+1`；拆分时每层最多一个后继继承原身份。
+局部只展开目标与依赖；全题逐项核显性/persona、关键数字、端点/参数、输出/字段与适用安全风险。开放实现可验证性质，不因开放强加 LLM；语义判据不钉死参考文案。
 
-### 5.2 指标
+### 逐规则实现与双向证据
 
-- **错误率 = F / N0 = {{percent}}（{{F}}/{{N0}}）**
-- **漏召率 = A / (N0 + A) = {{percent}}（{{A}}/{{N0 + A}}）**
+| rule/criterion identity | 源码/helper/parser/输入域/排除分支 | evidence 对象/身份/权限与适用轴 | 合法 PASS/高分预期及实际 | 违规 FAIL/降分预期及实际 | 方法/run_id/版本/输入引用 | issue/回归/未验证原因 |
+|---|---|---|---|---|---|---|
+| {{ID}} | {{关键实现}} | {{producer/writeability/consumer；轴适用依据}} | {{独立正式预期、实际、合法等价变化}} | {{最小违规/浅代理反例；部分分按正式尺度不全归零}} | {{静态推演/定向实跑/正式入口，不混淆}} | {{精确未证项及影响，不冒称穷尽}} |
 
-使用原始整数计算后乘 100，常规四舍五入至最多两位并去尾零，括号整数不约分。错误率可超过 100% 且不截断；两项均为描述性 QA 数据，不是阈值、PASS/FAIL、Oracle/nop、reward、gate 或 runner 分母。
+按 [逐项技术清单](../references/pre-delivery-qa-fusion.md)，完整验收覆盖所有实际确定性与语义判据，包括未修改项；局部覆盖修改与共享依赖，只读不跑。逐项判空集/顺序、对象/字段、语境/锚点、权限/控制权、合法等价、浅代理和解析轴的适用性，不能因低风险删适用项，不凑固定数量。静态推演不作动态证据；自造轨迹不证明真实过程。
 
-{{N0=0：错误率 N/A（0/0）；A>0 时漏召率 100%（A/A），否则 N/A（0/0）。基线不可靠、结构或配对未决时两项均 N/A，不猜数。}}
-
-## 6. Service / Credential Preflight
-
-不得写秘密值；只记录变量名、secret reference、挂载状态和脱敏结果。
-
-| preflight item | expected source/mount | status | evidence (redacted) | failure attribution |
+| 判据类别/适用轴 | 实际身份库存引用与适用性依据 | 已实测/适用总数 | 静态已审/未验证身份与原因 | 当前版本/证据引用 |
 |---|---|---|---|---|
-| service endpoint / connectivity | {{value}} | {{PASS/FAIL/BLOCKED/NOT_RUN/NOT_APPLICABLE}} | {{ref}} | {{infrastructure_failure/none}} |
-| credential reference / mount | {{env var name or secret ref, no value}} | {{status}} | {{ref}} | {{infrastructure_failure/none}} |
-| model / judge availability | {{value}} | {{status}} | {{ref}} | {{infrastructure_failure/none}} |
-| runner/image/evidence mounts | {{value}} | {{status}} | {{ref}} | {{infrastructure_failure/none}} |
-| isolation / writable output | {{value}} | {{status}} | {{ref}} | {{harness_noise/infrastructure_failure/none}} |
+| {{确定性/语义/各适用轴}} | {{逐项可追溯、不只报总数}} | {{整数/整数，不适用不计已测}} | {{缺项影响对应结论}} | {{refs}} |
 
-- preflight_overall：{{PASS/BLOCKED/NOT_RUN/NOT_APPLICABLE}}
-- secret_redaction_check：{{PASS/FAIL}}
-- dynamic_execution_disposition：{{PROCEED/BLOCKED/NOT_APPLICABLE}}
+### 独立复算与真实输入对拍
 
-### 6.1 P2 Evidence Trust Ledger
+| 判据/公式/聚合层 | 正式来源与独立推导路径 | 独立参照值 | 实现/配置声称值 | 报告值/未声称 | 三方差异/证据/状态 |
+|---|---|---|---|---|---|
+| {{全部可复算项及权重分母、满分可达性}} | {{不调用被审函数抄结果}} | {{边界/集合/单位/容差}} | {{源码或实际运行引用}} | {{不造第三个值}} | {{refs}} |
 
-每个 score-bearing identity 一行。candidate-owned evidence 只能证明候选行为，不能成为独立真值；live service 成功响应（包括 `[]`）是权威结果，禁止回退到 candidate-writable 文件。
+| parser/消费判据/支持模式 | 合法真实输入来源、版本/producer/freeze | 结构/actor/name/arguments/result/目标对象 | 预期提取与实际结果/run | 适用结构探针/缺样本影响 |
+|---|---|---|---|---|
+| {{依实际runner合同}} | {{正式导出样本，不从.pipeline搬出}} | {{list/dict、嵌套group、编码/路径等适用项}} | {{正向目标非空、负向合法空集；缺字段/未调用/失败分开}} | {{fixture仅证明自身行为，真实兼容缺证UNVERIFIED}} |
 
-| criterion / runtime ID | formal claim / trigger | authority truth source | producer / ownership | candidate reachable or writable | mount / endpoint / digest | fallback policy | live-empty / forged-file / unavailable expected result | run IDs / freshness |
+全题技术审核不以两遍QC采用为前提；固定样本数量与外部覆盖阈值仍按正式采用。无相关解析器或可复算项记有依据的不适用，不机械填空表。
+
+### 变更依赖与证据新鲜度
+
+| 变更/当前版本 | 影响义务、parser/scorer/prompt/evidence/注册/权重 | 受影响证据STALE与补验 | 未变证据FRESH复用依据 | 独立复核覆盖与终态 |
+|---|---|---|---|---|
+| {{实际依赖矩阵}} | {{全局加载/合同/聚合变化按真实影响扩大}} | {{真实run/未证原因}} | {{兼容依赖摘要，不冒一次全量run}} | {{issue—最终文件—回归—run—报告平账}} |
+
+纯排版不重跑；归因变化重核报告QC。合法变更tests内正式instruction或外部有权负责人变更tests外instruction时，记录授权正式来源、版本前后、写前preimage及实际diff；由未接隐藏答案的设计角色从授权正式来源独立重推/双冻结受影响范围，旧相关义务/评分设计及运行证据标STALE后真实重验并独立复核。不按GT修法，不以新instruction追认旧candidate失败或放宽仍有效义务。最终完整验收仍核全部判据无缺口，不拼不兼容评分版本，不每轮机械全题重启。
+
+### 当前 issue 与移交台账
+
+| issue ID | 精确路径/分类/正式依据/根因 | 影响义务与验收对象 | 当前状态 | 观察证据/修复/验证/历史引用 | 范围外责任与移交处置 |
+|---|---|---|---|---|---|
+| {{ISSUE-*}} | {{确认 grader 缺陷/候选错误/harness/infrastructure/未决风险/建议}} | {{具体范围}} | {{OPEN/FIXED+FRESH/STALE/UNRESOLVED/BLOCKED/OUT_OF_SCOPE}} | {{证据，不凭投票}} | {{观察对象、已做合法检查、责任、补验方}} |
+
+F 只计已修复且 fresh 的基线独立根因。同根因跨文件/跨轮去重。本轮引入又修掉的缺陷不计基线 F。tests外相关允许发现直接在本表记精确位置、证据、影响、责任与移交，不改外侧、不等待外部先修；只有实际依赖的必需项限制对应结论，不将全部外侧缺陷变成交付门。tests内 runner/config/helper/instruction 无保护子集，可合法修复的内部验证入口缺陷必须先留证修复并验证，不冒称外部环境阻塞。明示限制及真实证据/安全约束仍优先；不能把记录或移交写成已修复 PASS。
+
+### 材料准备、修改前留证与补证结果
+
+| evidence ID/关联义务或反馈 | 类型/对象/必需性 | 权威来源/版本/原task_path映射 | 实际载体/hash/原内容或最小完整修改单元 | 收集状态/验收状态 | 已执行查源/补证及结果 | 剩余缺口/影响/责任/恢复条件 |
+|---|---|---|---|---|---|---|
+| {{EVID-*}} | {{ORIGINAL_TASK/ROUND_PREIMAGE/HISTORICAL_TRAJECTORY/CURRENT_RUN/SCORING_BASELINE}} | {{不以.bak/当前快照冒充历史}} | {{合法原文引用或最小完整单元，秘密不转写；hash非完整证据}} | {{AVAILABLE_UNCHECKED/VERIFIED/MISSING_RECOVERABLE/NEEDS_AUTHORIZATION/EXHAUSTED/N/A；对应NOT_RUN/UNVERIFIED/BLOCKED}} | {{明确授权来源、实际命令/run、结果；未查不等于不可恢复}} | {{具体对象而非一句缺材料}} |
+
+首次授权tests写入前先记录本轮可信原内容，无法合法保全先不写对应目标；只读不创建报告。仅实际依赖历史的主张/认证先核其必需旧证据为VERIFIED或正式接受具体替代。可恢复先合法恢复，确穷尽才EXHAUSTED；逐项记录精确来源/版本、实际动作/结果、缺失对象、受限主张、required/authority/dependency及门控影响、责任/恢复条件，缺权限另记具体阻止，不把未查写穷尽。无新来源、权限或相关版本/依赖变化，不每轮复查同一已穷尽历史，继续当前完整修验和独立QC。旧修改对比需权威原task_path，旧行为归因需对应旧轨迹；当前修法需正式输入、本轮真实preimage/diff/终态及当前真实必需验证，不捆绑全部遗失历史。新run不冒充旧轨迹，本轮preimage/handoff指标不替代权威原task_path。future_run_plan修前核入口、实际权限、evidence来源、版本/服务预检、隔离与证据可生产位置；修后实际取CURRENT_RUN，不能把计划填VERIFIED或要求修前已有修后结果。当前局部或完整FULL范围可独立准入；非必需历史UNVERIFIED不阻当前完整交付/模式完成，不降为LOCAL，真历史门未闭合不称原请求全要求通过。当前引用错误/未证旧行须补证或有据纠正/撤回依赖，保留原行、来源和纠正原因，不删除/换标签逃避错误修法或分类。本轮漏留preimage、漏登记或缺必需验证是WorkC生产缺陷，合法找回证据/补登记并如实标事后恢复，不倒填免责。修改后绑定同对象版本/hash/diff和真实终态，其他已证范围保留。
+
+### 累计错误率和漏召率（约定 QA 指标）
+
+| 基线版本/可信来源 | R0 | T0 | N0 | F | AR | AT | A | 错误率 F/N0 | 漏召率 A/(N0+A) | 本轮增量/对账 |
+|---|---:|---:|---:|---:|---:|---:|---:|---|---|---|
+| {{baseline}} | {{整数或N/A}} | {{}} | {{}} | {{}} | {{}} | {{}} | {{}} | {{百分比（分子/分母）或N/A理由}} | {{}} | {{ΔF/ΔAR/ΔAT及issue/identity}} |
+
+冻结 N0 不回写；F 和新增身份跨轮更新，按根因/实际身份而非修改次数/回归函数数。先合法查原基线；确不可恢复原累计N/A，但另列明确接手阶段基线/比例，不从当前状态反推历史。两个比率分别按可信数据计算，不因无关未知全写N/A。完整已核新增为0则填0；未知用null/N/A及准确理由。
+
+| 基线ID/origin/scope/起算时间 | 身份key/kind与实际源ID/计数依据 | 原内容/正式版本引用 | 当前身份及inherits/新增/删除 | 根因root_id、基线根因/已修/已验/FRESH与证据 |
+|---|---|---|---|---|
+| {{original或handoff明确分开}} | {{逐评分身份，不按函数}} | {{来源权威/完整性}} | {{逐项对账，原身份最多一个继承}} | {{跨轮去重，未验不计F}} |
+
+可在本节保存非秘密结构化声明，通过scripts/check_qa_ledger.py stdin检查与复算，不另存台账JSON；合法声明和checklist_ready不认证真实取证或QC PASS。两项不是通常的误判率/漏检率，也不是任何验收门。只读未修不把 0% 冒称质量无问题。
+
+## 条件证据模块
+
+只展开适用模块并保留有效旧模块；未展开项在当前结论说明原因。条件模块不是额外门。
+
+### 独立质检与返修闭环（完整验收或本次明确要求时；无人值守自动推进）
+
+| round/剩余预算 | reviewer及实际已读QC路径/版本/适用条款 | 目标版本与技术/QC范围 | 发现ID/正式依据/作业员裁决 | 实际修复/真实验证/新鲜度 | 当前版本独立复检与未闭合门 | 进展/继续或停止原因 |
+|---|---|---|---|---|---|---|
+| {{本轮；仅用户显式预算才记余量，无默认轮数/无进展硬停}} | {{原有权威QC主文档及已采用条款的实际已读路径/版本，不以摘要冒充}} | {{本次对象/当前版本、报告反馈映射及相关tests外记录}} | {{逐项核实；确认授权tests/报告错误实际修复，候选真错且规则有效则有据不改，未证合法补证，建议不门控，冻结外侧问题记录移交}} | {{worker在本次实际操作范围修复/有据不改；tests_allowlist默认tests/**+根QA，明示限制优先，无额外冻结子集或审批；相关run和FRESH复用证据}} | {{真实独立回执，不自签/投票；未通过返修更新QA并复检当前版本，本轮质量及适用历史门分别核}} | {{本次完成或精确未完成/停止原因；仅启用无人值守才用UNATTENDED_COMPLETE，STOPPED_BUDGET仅显式预算，STOPPED_BLOCKED真实无法继续，STOPPED_USER用户退出}} |
+
+STANDARD 的 FULL_ACCEPTANCE 也须独立复核；明确直到 pass 或完成交付，按本次对象核实反馈→授权修复/补证→相关验证→更新真实 QA→当前版本独立复检，直到实际通过或真实停止，不必另说无人值守。LOCAL_REPAIR 不默认新增全题/QC 门，其他作业明示上限不变。复用本表/既有轮次，不增第三报告或审批台账。
+
+按 [SOP §6.1–7.1](../references/execution-sop.md#61-首轮完整审核与集中反馈)，首轮回执引用应审/已审/未审身份及原因，按根因集中反馈；复检新问题在既有发现/轮次中记“首轮漏检/返修引入/新证据发现/新增要求”、旧新版本/证据及影响，证据不足则归属待证，不影响先处理已确认缺陷。新增要求须有正式采用依据，建议不门控。复检引用实际 diff、受影响依赖/补验及未变 FRESH 复用依据，不把未审项当已通过。
+
+无人值守按 [现行路由](../references/routing-and-authority.md)，唯一明确当前task下仅下达“无人值守”且无明确更窄/只读/禁写限制时，默认FULL_ACCEPTANCE全题tests侧自动修复验收，本请求许可整个tests/**与同根QA写入，worker将tests_allowlist映射为实际操作范围（默认tests/**+根QA），不另设冻结子集或allowlist审批；早前仅作业标签不阻新默认，明确限制优先。冲突的旧作业沿用及默认8轮/2轮停止口径不再适用，其他质量/安全细则保留。worker先正式材料独立双冻结、准入备证、自查修tests真实验证，默认只读核当前task tests外相关允许正式材料并写同根QA范围及路径/证据/影响/责任/移交，未发现也记范围。随后独立非写入QC实际读QC文档，核当前task、报告及外侧记录；worker核实反馈→集中tests/QA修复→真实验证→独立复检循环。
+
+无显式预算持续处理尚有合法可修/补证路径的事项，不按轮数或连续无进展硬停；重复无效动作须改查证/归因/合法修法，真实无法继续才停止对应范围。预算耗尽或用户退出如实记，不是假 PASS。准入、双冻结、写硬锁、答案隔离及动态核验保持 [统一合同](../references/qc-exceptions-and-admission.md) 与 [§1.1 实际只读隔离](../references/qc-exceptions-and-admission.md#11-质检可执行核验但题包不写)，不新增审批或候选/网络/安装权限；tests内runner/instruction属默认写集合，tests外runner/instruction仍只读移交，用户明示禁改优先。外侧建议不门控，tests外只读对象或用户明示禁改对象的问题确实影响必需判据则限制对应结论；移交不是修复。所有本次必需门新鲜有效且当前版本独立复检闭合才成功；关键材料缺失使实际依赖的主张UNVERIFIED，不伪装N/A/PASS，也不将非必需历史缺口传播为当前完整交付阻塞。当前FULL范围自身门闭合可PASS/UNATTENDED_COMPLETE，明确历史门未闭合则原请求全要求仍未完成，不静默降为LOCAL。只读不创建本报告。纯引用最终 reviewer 回执不无限自指复检，实质归因/规则/证据变化才重核受影响项。
+
+### 本轮报告质量审核（本轮报告写入即适用）
+
+| 本轮主张/issue ID及范围 | 正式来源、缺陷/实际断言与独立预期 | 实际观察与归因 | 写前内容/真实diff及终态 | 正反例/正式run/版本/freshness | 作业员质量自查结果；独立reviewer实际回执/未证原因 |
+|---|---|---|---|---|---|
+| {{引用既有技术/issue表，不复制台账}} | {{有缺陷才列缺陷；无缺陷、运行、指标、限制及完成声明也审核}} | {{主动静态发现/真实探针/真实candidate失败分清；不造旧Agent行为}} | {{本轮preimage非权威旧原题；未留证准确记WorkC本轮缺口}} | {{未执行NOT_RUN，不标未验FIXED}} | {{本轮质量PASS不等于tests或历史PASS；关键主张缺证UNVERIFIED，确证错误FAIL}} |
+
+先完成实质报告及作业员质量自查，再按本次要求独立审核；自查记录实际工作，不另设状态机或替代独立 QC。真实 reviewer 回执前，独立状态如实记 NOT_RUN/UNVERIFIED，不由 worker 填 PASS。只追加准确回执不无限自指。无历史清单仍核本轮质量，不为取得 PASS 强造 A/B 失败行。只读审核仅回复，不生成本报告。
+
+### 报告逐行 A/B 归因与修改终态（历史对象适用时）
+
+| 原始反馈行/失败 ID | 权威 task_path/报告行映射 | 测试问题与实际失败断言 | 正式输入可推导性 | Agent 实际行为/相关轨迹 | A/B 分类及归因依据 | 修改情况/实际路径 | 修改前后与终态证据 | QC 裁决 |
 |---|---|---|---|---|---|---|---|---|
-| {{ID}} | {{claim / applicability}} | {{source}} | {{verifier/authority-owned / candidate-owned / infrastructure-owned}} | {{yes/no + basis}} | {{value}} | {{NONE or formally allowed behavior}} | {{expected values and attribution}} | {{refs}} |
+| {{稳定行ID}} | {{权威原task_path及正式映射/版本；缺失不造，不用当前快照替原题}} | {{rule/evidence/真实失败断言}} | {{正式来源、独立推导、歧义}} | {{对应真实旧轨迹及全部提供相关轨迹；缺失明确UNVERIFIED，不以当前run断言旧行为}} | {{A有效模型错 / B测试任务问题；有证才判，环境事件另归因；纠正保留原行/来源/原因}} | {{不改/实际修复/移交，建议不当已改}} | {{历史修改对比引用权威原题与对应终态；当前修法另引用本轮真实preimage/diff/终态及fresh验证，不混同}} | {{历史PASS/FAIL/UNVERIFIED及理由；是否门控当前交付引用矩阵required/authority/dependency}} |
 
-- P2 gate disposition：{{PASS / BLOCKED / DEPRECATED / ABANDONED}}。
-- 每条正向过程或完成度 claim 若没有非空、可信的 authority truth source，必须写 `BLOCKED`；不得借 agent 日志、文件副本、叙述或 hash 转化为 PASS。
+历史QC核可执行分类、归因与旧修法，不只看终态绿灯。核心结论正确的叙述瑕疵记录而不机械打回；错误但惰性的修法仍是错误结论。任一确证历史行FAIL则该范围历史QC FAIL，全部适用行完整核实才该范围历史PASS，不以“总体QC”混同当前报告质量或tests交付。历史对象经正式来源确认不存在才N/A；对象未知或关键旧证据缺失为UNVERIFIED/证据不足，本轮报告质量仍审核，不因报告自己标N/A或无A/B表豁免。该历史状态是否影响当前交付另按§7.2/§7.2.1及矩阵required/authority/dependency判定，不能仅因有历史对象就判当前必需；明确历史门未闭合保留原请求未完成。纠正错误/未证旧行须保留原行、原来源及纠正原因，明确受限旧事实与当前主张依赖，不删行、改名或换标签逃避当前错误修法/分类。相关GT/oracle静态核查按 [统一合同](../references/qc-exceptions-and-admission.md) 默认许可，记录WORKC_DEFAULT、角色、双冻结、精确已读对象及正式来源支持的结论，不索要读取另批、不转写答案；.pipeline仍禁读。tests内instruction缺陷可由作业员按本次授权修复，保全写前内容、真实diff/终态并验证；tests外instruction需求仅只读核精确对象、记录依据/影响/责任并移交，不修改，不把移交当已修复或PASS。合法变更tests内正式instruction或外部有权负责人变更tests外instruction、导致合同变化后，单列授权正式来源及版本前后；由未接隐藏答案的设计角色独立重推/双冻结受影响范围，旧相关义务/评分设计及运行证据STALE并真实重验、独立复核，不按GT改题、不以新instruction追认旧candidate失败或放宽仍有效义务。
 
-## 7. 验证证据、HTML Evidence 与新鲜度
+### 正式运行与逐评分项结果
 
-| run_id | 验证项 | scope | authority | 状态 | 时间 | 结果摘要 / RC | evidence_ref | freshness |
-|---|---|---|---|---|---|---|---|---|
-| {{run-id}} | {{structure/parser/bootstrap/collect/known-answer/persona/runner/oracle/nop/etc.}} | {{targeted/full}} | {{local-wrapper/official-runner/platform}} | {{status}} | {{start/end}} | {{summary}} | {{artifact}} | {{FRESH/STALE/UNVERIFIED}} |
+按 [运行同步留证](../references/runtime-acceptance.md#41-运行时同步留证缺证先合法补产) 在启动前/执行时/结束后实际捕获：外层命令与 cwd、参与执行的 wrapper/入口/hash（含实际使用的 __validation）、实际 image ID/digest 与容器实装版本、允许输入清单/摘要、实际最小挂载及 ro/rw、阶段/退出状态和结果/hash。只记录非秘密最小数据，不整体 dump env/inspect 或扫描禁区；事后找回注明来源/时间，缺项可合法补产新 run 则继续，旧 run 不追认。“仅改报告不空跑”不免除实际缺证所需重跑。
 
-每个 run 绑定：
-
-```text
-structure_inventory_digest = manifest + canonical path/status inventory
-grader_digest          = legacy consumed rubrics/tests；0917 manifest + 3 checks + optional quality + paired prompt + reward + judge helpers
-manifest_digest        = SHA-256 or NOT_APPLICABLE
-quality_digest         = SHA-256 or ABSENT_ALLOWED/NOT_APPLICABLE
-prompt_path / prompt_status / prompt_digest_or_NOT_APPLICABLE = canonical path + status + SHA-256 or NOT_APPLICABLE
-checks_digests         = process/output/safety
-reward_digest          = SHA-256 or ABSENT_ALLOWED/NOT_APPLICABLE
-runtime_loaded_paths_and_digests = actual loader observations
-runner_digest          = test.sh / runner / aggregation config
-rules_digest           = active claim carriers and versions
-fixture_digest         = inputs and formal mappings
-candidate_digest       = candidate / Oracle / nop / control artifact
-candidate_identity     = role and immutable identifier
-conversation_digest    = conversation evidence when applicable
-evidence_digest        = audit / trajectory / frozen evidence
-probe_digest           = dynamic probe and isolation wrapper
-environment_digest     = image / lockfile / verifiable environment identity
-config_digest          = non-secret effective settings
-service_credential_preflight_status = redacted result
-result_digest          = result artifact
-```
-
-`FRESH` 要求当前全部适用输入摘要、路径和 runtime 加载一致且范围足够；任一变化使旧结果 `STALE`。不得把定向回归写成全量，不得拼接不同 run。
-
-### 7.0 P3 Invariant / Mutation Matrix 与 P4 Change-Impact Ledger
-
-| invariant_id | 不变量 / 正式依据 | 最小正反例或变异 | expected result | changed path/field | 失效的 claim / identity / validator / aggregation | 必跑 control / run | replacement run / freshness |
-|---|---|---|---|---|---|---|---|
-| {{I#}} | {{scope/source/topology/weight/non-vacuity/no-fallback/trajectory/anchor/attribution/freshness}} | {{single-variable mutation}} | {{PASS/FAIL/BLOCKED and attribution}} | {{path/field}} | {{refs}} | {{refs}} | {{run ID / FRESH or remaining BLOCKED}} |
-
-- 每个确认的 tests-side 缺陷必须关联一个常驻回归：最小反例、正例、预期、issue ID、run ID 和 freshness。无法构造时保持 `BLOCKED`，不得标 `FIXED`。
-- P4 exit disposition：{{PASS / BLOCKED / UNVERIFIED}}。任何受影响行 `STALE/UNVERIFIED`，或不同 run 被拼接为整体 PASS 时，`evaluation_certified` 必须为 `NO/BLOCKED`。
-
-### 7.0b RewardKit 版本契约（批次指令：harbor-rewardkit==0.2.0）
-
-| 检查 | 状态 | evidence / mismatch |
-|---|---|---|
-| 题包依赖声明确切 pin `==0.2.0`（非 `0.2.*`/范围/裸包名） | {{status}} | {{Dockerfile/依赖位置与原文；冻结路径问题记 OUT_OF_SCOPE/BLOCKED}} |
-| `test.sh` 版本断言为精确比较（非前缀匹配） | {{status}} | {{断言语句}} |
-| 本地验证环境 harbor-rewardkit 实际版本 | {{0.2.0 / 其他}} | {{解析方式与输出；非 0.2.0 则相关结果 UNVERIFIED}} |
-| 每个 run 标注实际解析版本 | {{status}} | {{run digest 中的版本记录}} |
-| 版本差异导致的准则数量/权重影响已排查 | {{status}} | {{0.2.0 vs 0.2.1 注册差异；装饰器/`rk.` 成对状态核查}} |
-
-- rewardkit_version_contract：{{PASS / FAIL / BLOCKED / NOT_APPLICABLE（legacy 题）}}；返修"准则数量/权重不符"时，版本核对先于注册写法修改。
-
-### 7.0a C1–C4 交付前 QA 融合
-
-#### C1 Canonical V1 Hard Gate
-
-| canonical command / entrypoint | workdir | input/grader/validator digests | scope | started/finished | RC | output/result digest | status |
-|---|---|---|---|---|---:|---|---|
-| {{value}} | {{value}} | {{value}} | {{schema/parser/mapping/aggregation/carrier/drift controls}} | {{times}} | {{RC}} | {{refs}} | {{PASS/FAIL/BLOCKED/NOT_RUN}} |
-
-- canonical-entry discovery basis：{{actual runner/validator/self-test chain；不得只把多个局部 PASS 拼成入口}}
-- C1 execution status / validation result：{{未建立/未运行入口 = NOT_RUN + blocker；已运行发现测试侧 defect = FAIL；非测试侧 infrastructure 中断 = BLOCKED；完整成功 = PASS；静态已知 defect 另列 issue，不被 NOT_RUN 隐藏}}
-- schema/TOML/YAML inventory and mutation controls：{{carriers, allowed keys/cardinality/types, unknown-field policy, single-variable failures}}
-- C1 limitations：{{V1 不替代 V2+ import/harness/candidate/Oracle/nop/judge certification}}
-
-#### C2 独立设计与 Source-carrier 覆盖复审
-
-| reviewer / independence basis | scope / input digests | carrier inventory / integrity | score-identity and authority closure | new or remaining findings | disposition |
-|---|---|---|---|---|---|
-| {{value；不是人工/负责人代签}} | {{claims, identities, carriers, runtime}} | {{exact normalized paths, versions/digests, consumers, policy-gated integrity/canary}} | {{PASS/FAIL/BLOCKED}} | {{issue IDs/none}} | {{PASS/FAIL/BLOCKED/NOT_RUN}} |
-
-#### C3 独立 Expected-value 复算
-
-| value/claim ID | formal non-prohibited source | independent derivation / tool | recomputed value | implementation/manifest/report values | three-way result | issue/run refs |
+| run_id/原 attempt/实际执行者 | 无秘密命令/模式/入口/cwd | 实际版本/镜像/配置/grader/evidence摘要 | 输入输出范围/实际隔离/挂载/producer/consumer/权限 | 时间/适用阶段结果 | 逐项/维度/聚合/gate/artifact | 范围/新鲜度 |
 |---|---|---|---|---|---|---|
-| {{ID}} | {{carrier/version/digest}} | {{formula/script/ref}} | {{value or BLOCKED/N/A}} | {{three values}} | {{MATCH/MISMATCH/BLOCKED}} | {{refs}} |
+| {{run/原attempt/独立非写入QC或协调者等实际执行者}} | {{实际命令及verifier-only/rollout/定向/oracle，不从角色推授权}} | {{精确版本依正式合同}} | {{最小允许输入/输出范围；QC任务全路径实际只读边界/题包外独立已获准scratch；答案输出可见角色，不挂整题/秘密/.pipeline}} | {{实际rc/异常；无字段不造}} | {{身份 exact-once、权重分母可复算、脱敏结果digest/引用}} | {{FRESH/STALE/UNVERIFIED}} |
 
-不得用 Oracle、nop、judge、ground truth 或历史题数值替代独立推导。无法独立推导时保持 `BLOCKED/N/A`。
+运行回执由协调者将已核脱敏结果写入本表/既有轮次，不新增审批或台账；QC不写任务QA，只给缺陷位置、正式来源可独立推导的方向及脱敏状态/引用，不生成/应用补丁、不参与修复。候选低分与 evaluator 故障分开。有效本地真实链认可；构建、stub、rc=0 或两个 verifier 重跑不冒充全链/两 rollout。已采用实测交付时逐 criterion 列至少两有效 attempt 及判别力，不用总分替代；采用 rubric_delivery_requirements 时 reward_degraded 非空使该轮全部 judge 结果不可用并须补跑，不能计正常返回项为有效。独立有效确定性证据可保留；其他合同按其明示失效范围。
 
-#### C2a 逐判据对抗反例审计
+### judge 逐项链路（实际存在且本次相关时）
 
-- TESTS_HASH / 与同轮 C2/C3 指纹一致：{{digest；不一致即停止报错，不生成错位报告}}
-- 实跑覆盖 / 等价解覆盖：{{M/N 条 float 判据 ≥1 实跑反例；M/N 条硬编码判据 ≥3 等价形态；未实跑清单与理由}}
-- 宿主环境声明：{{bash/jq/docker/rewardkit 可用性；可能因宿主-容器差异失真的反例}}
-
-| angle_id | 方向 | 反例类型 | 构造输入 | 期望分 | 实际分 | 实跑/静态推演 | 结论 / issue refs |
-|---|---|---|---|---|---|---|---|
-| {{ID}} | {{under-strict / over-strict / 可达性 / 环境期望 / SHALLOW}} | {{占位/伪回执/同数量异身份/等价形态/twin/乱码路径/…}} | {{最小反例}} | {{value}} | {{value}} | {{run/推演}} | {{E/W/通过 + refs}} |
-
-静态推演必须列反例本体与预测分，否则视为未审。全表零反例时重新逐判据检查，确属穷尽须逐条说明。
-
-#### C4 QA 平账、状态对账与重启轮次
-
-| cycle_id | frozen-input/diff digest | C1 | C2 | C3 | findings / changed evidence | restart_from | final disposition |
-|---|---|---|---|---|---|---|---|
-| {{cycle}} | {{digest}} | {{status/run}} | {{status/review}} | {{status/ref}} | {{IDs/none}} | {{P gate/C1/none}} | {{PASS/STALE/BLOCKED}} |
-
-| reconciliation | expected relation | observed | status / evidence |
-|---|---|---|---|
-| identity counts | `N0=R0+T0`；`R1=R0+AR-DR`；`T1=T0+AT-DT`；`N1=N0+A-D` | {{value}} | {{PASS/FAIL/N/A + refs}} |
-| issue metrics | `A=AR+AT`；`D=DR+DT`；`F` 仅 FIXED+PASS+FRESH | {{value}} | {{status}} |
-| issue/run freshness | 每个 FIXED issue 有常驻回归与当前 digest 的 FRESH run | {{value}} | {{status}} |
-| blockers/status | blocker 必须投影到受影响状态；overall 不得覆盖底层 evidence | {{value}} | {{status}} |
-| readiness separation | V1 handoff 与 V2+ evaluation certification 分开 | {{value}} | {{status}} |
-| allowlist/prohibited references | changed paths 闭合；tests/report 不引用 `.pipeline/` 内容 | {{value}} | {{status}} |
-
-任何 C2/C3/C4 发现导致 tests 或结论证据变化时，旧 C1–C4 全部 `STALE`，回到最早受影响的 P gate，并从 C1 完整重启；禁止跨 cycle 拼接 PASS。
-
-### 7.1 HTML Evidence
-
-| evidence_id | source artifact/path | artifact digest | parser/method | selector/fragment | escaping/visibility check | bound criterion/check | status |
-|---|---|---|---|---|---|---|---|
-| {{HTML-001}} | {{path/ref}} | {{SHA-256}} | {{method/version}} | {{selector/fragment}} | {{PASS/FAIL/BLOCKED}} | {{ID}} | {{PASS/FAIL/BLOCKED/NOT_APPLICABLE}} |
-
-记录原始 HTML artifact、解析方式、可见文本/属性边界、转义/脚本内容处理和绑定关系；只粘贴转述文本不能替代原始证据 digest。
-
-### 7.2 0917 Bootstrap / Known-answer / Persona
-
-| 场景 | 输入/身份 digest | 预期 | 实际 | run_id / evidence | 状态 / freshness |
+| 义务/criterion/runtime身份 | prompt/变量/实际evidence/actor/freeze/截断 | backend/版本/路由/请求响应关联 | raw合法域/转换/error/degraded | 分母/权重/正式判据 | cache/freshness/证据/状态 |
 |---|---|---|---|---|---|
-| bootstrap / loader closure | {{value}} | {{manifest、三维 canonical checks、可选 quality–prompt、可选 reward 与 runtime 加载/聚合全部闭合}} | {{value}} | {{refs}} | {{value}} |
-| known-answer positive | {{value}} | {{formal expected}} | {{value}} | {{refs}} | {{value}} |
-| deterministic negative | {{value}} | {{formal expected}} | {{value}} | {{refs}} | {{value}} |
-| persona / conversation boundary | {{value}} | {{formal expected or NOT_APPLICABLE}} | {{value}} | {{refs}} | {{value}} |
+| {{ID}} | {{实际消费摘要}} | {{批量请求成员逐项关联}} | {{先核raw，不截断救绿灯}} | {{必需语义非装饰分}} | {{VERIFIED/FAIL/UNVERIFIED/BLOCKED}} |
 
-## 8. LLM ≤40% 复算与四负控
+无 judge 不访问凭据；smoke/辅助校验不代替正式链。秘密只记引用；请求/原话先脱敏。合法结构不证明语义分数未互换。
 
-- applicability / formal source：{{0917 适用依据；legacy 填 NOT_APPLICABLE}}
-- llm_effective_reward_share / bound：{{沿真实嵌套聚合、归一化、门控、fallback 的公式与最终占比；必须 ≤40%，未知 BLOCKED}}
-- calculation_inputs_digests：{{manifest / quality / prompt / process-checks / output-checks / safety-checks / reward / runner-and-aggregation-config / runtime-result digests}}
-- aggregation_input_change_recalculation（manifest / quality / prompt / process-output-safety 3 checks / reward / runner-and-aggregation / runtime / effective weights）：{{任一适用输入变化时，旧占比复算与相关 runs 均 STALE，必须重新复算并回归；PASS/STALE/NOT_APPLICABLE}}
-- acceptance_rule / source：{{正式通过判据；未给统一数值门不得擅造 cutoff}}
+相关且获准运行时，在现有运行记录注明正式配置来源/优先级、既有 `~/.agents/skills/workc/.secrets/judge.env` 引用的存在性、可信加载脱敏状态及实际适用性；不记录值或完整环境，不把存在性填作 judge 通过。先按 [judge-chain §2](../references/judge-chain.md#2-配置模型与真实调用预检) 查约定位置再报缺配置，正式批次其他来源优先，无 judge 不展开此项。
 
-| 负控 | 单变量变更 / candidate digest | 一致 evidence / environment refs | process/output/safety/quality 分项 | 总 reward / 正式门 | 状态 / run_id / freshness |
+### 外部已采用质量门与负控
+
+| 采用规范/版本/门 | 范围与合法基线 | 单变量样本/配置 | 逐项/维度/聚合与正式判据 | run/覆盖整数/证据 | 状态/影响 |
 |---|---|---|---|---|---|
-| 关键词空壳 | {{value}} | {{value}} | {{value}} | {{value}} | {{value}} |
-| 错误数值 | {{value}} | {{value}} | {{value}} | {{value}} | {{value}} |
-| 缺关键内容 | {{value}} | {{value}} | {{value}} | {{value}} | {{value}} |
-| 移除所有 judge 的事实检查消融 | {{保留 deterministic facts；隔离外部配置}} | {{value}} | {{value}} | {{实际分母/归一化/正式门}} | {{value}} |
+| {{两attempt/等价覆盖/LLM占比/三类负控/两向消融}} | {{采用依据}} | {{不自造过程；tests内配置可按授权正式依据修复并留证/重验，tests外或用户明示禁改配置不改}} | {{不自创“明显失分”阈值}} | {{真实证据}} | {{N/A需依据}} |
 
-四负控未执行如实列 `BLOCKED/NOT_RUN`。局部静态探针不能认证完整 runner，不同 evidence 上的分数下降不能宣称单变量因果。
+三类负控、两向消融、80%或三等价样本只按已采用规范执行；不因单题豁免已适用要求。缺合法运行接口只阻塞该外部认证，不把说明当通过。
 
-### 8.1 多轮复测稳定性
+### 安全与 evidence 专项（相关时）
 
-- requested / actual repeat count：{{实际记录；不得虚构固定轮数}}
-- independent_run_ids / scopes / digests：{{每轮独立证据}}
-- all_results / inconsistent_items / attribution / disposition：{{全部结果；修改后旧轮次 STALE；不挑最好}}
-
-## 9. Post-trajectory 环境事件台账
-
-| event_id | stage | trajectory/run_id | observed_at | environment_cause | exact_normalized_missing_path | expected_source_or_mount | responsible_party | evidence | status | repair_disposition |
-|---|---|---|---|---|---|---|---|---|---|---|
-| {{ENV-001}} | `post-trajectory` | {{ref}} | {{ISO-8601 with timezone}} | {{verified cause}} | {{单个精确规范化路径}} | {{image/platform/mount/source}} | {{party}} | {{refs}} | {{BLOCKED/OUT_OF_SCOPE}} | `NO_FURTHER_REPAIR_REQUIRED_ENVIRONMENT_HANDOFF` |
-
-- missing_path_classification：{{environment-provided path missing / candidate-required deliverable missing / unresolved}}
-- classification_basis：{{formal source + healthy-harness evidence；不得仅凭 ENOENT 猜测}}
-- candidate_missing_delivery_issues：{{若本应由候选交付，列 candidate_failure IDs，不写入环境移交}}
-
-每个精确规范化缺失路径单独占一行；不得使用目录概述、glob，或在一个单元格中合并多个路径。仅在环境根因已证实、责任归属明确且测试侧无进一步合法修复时使用固定 `repair_disposition`。
-
-## 10. 状态向量与收口状态
-
-| 维度 | 状态 | 证据 | 限制/阻塞 |
-|---|---|---|---|
-| review_completeness | {{PASS/FAIL/PARTIAL/BLOCKED/NOT_RUN/NOT_APPLICABLE}} | {{refs}} | {{value}} |
-| structure_inventory | {{status}} | {{refs}} | {{value}} |
-| quality_prompt_pairing | {{status}} | {{refs}} | {{value}} |
-| manifest_runtime_consistency | {{status}} | {{refs}} | {{value}} |
-| grader_design | {{status}} | {{refs}} | {{value}} |
-| parser_static | {{status}} | {{refs}} | {{value}} |
-| runner_health | {{status}} | {{refs}} | {{value}} |
-| bootstrap | {{status}} | {{refs}} | {{value}} |
-| known_answer | {{status}} | {{refs}} | {{value}} |
-| persona | {{status}} | {{refs}} | {{value}} |
-| html_evidence | {{status}} | {{refs}} | {{value}} |
-| service_credential_preflight | {{status}} | {{refs}} | {{value}} |
-| llm_share_and_negative_controls | {{status}} | {{refs}} | {{value}} |
-| oracle | {{status}} | {{refs}} | {{value}} |
-| nop | {{status}} | {{refs}} | {{value}} |
-| difference_audit | {{status}} | {{refs}} | {{value}} |
-| package_integrity | {{status}} | {{refs}} | {{value}} |
-| external_submission | {{status}} | {{refs}} | {{value}} |
-| P0–P4 contract gates | {{PASS/BLOCKED/UNVERIFIED}} | {{baseline/topology/invariant/freshness refs}} | {{missing gate or none}} |
-| C1 canonical V1 hard gate | {{status}} | {{command/run/digest refs}} | {{missing coverage or none}} |
-| C2 independent design/carrier re-audit | {{status}} | {{review refs}} | {{findings/blocker or none}} |
-| C3 independent expected-value recomputation | {{status}} | {{comparison refs}} | {{mismatch/blocker or none}} |
-| C4 QA accounting/status reconciliation | {{status}} | {{reconciliation/cycle refs}} | {{contradiction or none}} |
-
-- `test_delivery_handoff_ready=YES` 的前提：授权 tests/report、P0–P4 静态交付契约、allowlist diff 与 C1–C4 均闭合且四门均 `PASS`。`evaluation_certified=YES` 还要求全部适用 V2+ 动态门 `FRESH/PASS`，并且没有把不同 run/cycle 的局部结果拼接成整体认证。实际 mount/endpoint provenance 或 candidate run 未授权/未执行时，handoff 可按静态契约判断，但 evaluation 必须为 `NO/BLOCKED`。
-
-| 收口环节 | 状态 | 复核人/授权来源 | artifact digest / evidence refs | 未完成原因 |
+| 维度/提取器 | 题面触发与目标行为 | source/producer/actor/字段族与权限 | 正反例/实际证据 | 结论/范围 |
 |---|---|---|---|---|
-| human_review_status | {{value}} | {{value}} | {{value}} | {{value}} |
-| technical_lead_review_status | {{value}} | {{value}} | {{value}} | {{value}} |
-| trajectory_stage_status | {{value}} | {{value}} | {{value}} | {{value}} |
-| algorithm_acceptance_status | {{value}} | {{value}} | {{value}} | {{value}} |
+| {{A–H或parser}} | {{适用依据}} | {{name/arguments/result、嵌套/编码、freeze}} | {{refs}} | {{未覆盖项明确}} |
 
-- trajectory_5_percent_rule：{{仅适用阶段；来源、真实分子/分母/范围、是否核实；不等于 F/N0 或 reward}}
-- batch_table / task_row / authorization：{{value}}
-- batch_table_completion / error_rate / miss_rate / writeback_status：{{未授权仅列待登记值，NOT_REQUESTED/NOT_AUTHORIZED}}
+A–H 按场景筛查，不强造八项；safety gate 仅依真实 runner。已采用两遍 QC 时，提取器须审 name/arguments/result 三字段族及真实 rollout 兼容性；现有实现不消费某字段不能自动豁免，须按正式义务和规范核缺口。未采用时按实际相关证据核字段族。服务成功空结果不回退候选伪造文件。
 
-无人员或阶段证据不得写 PASS；overall_status 是状态向量摘要，必须附派生理由。
+### 历史异常与外部阶段（相关时）
 
-## 11. Ready、平台与最终差异审计
-
-| 判定 | 状态 | reason_codes | blocking_issue_ids | evidence_refs |
+| 对象/精确路径或阶段 | 起始状态/来源/观察时间 | 本轮新增或既有 | 影响的具体结论 | 处置/责任/真实回执 |
 |---|---|---|---|---|
-| test_delivery_handoff_ready | {{YES/NO/BLOCKED/NOT_APPLICABLE}} | {{codes}} | {{IDs}} | {{refs}} |
-| evaluation_certified | {{YES/NO/BLOCKED/NOT_APPLICABLE}} | {{codes}} | {{IDs}} | {{refs}} |
-| platform_submission_ready | {{YES/NO/BLOCKED/NOT_APPLICABLE}} | {{codes}} | {{IDs}} | {{refs}} |
+| {{异常/人工/算法/平台}} | {{无可信来源写未知}} | {{不自动归责}} | {{不传播无关阻塞}} | {{未授权不动作，不代签}} |
 
-- platform/task ID / environment：{{value}}
-- authorization source / time：{{value}}
-- upload_at / submit_at：{{value}}
-- receipt/submission ID：{{value}}
-- platform artifact digest：{{value}}
-- displayed final status / last_verified_at：{{value}}
-- artifact missing / changed / unexpected_extra：{{normalized paths}}
-- actual_changed_paths：{{必须满足 ⊆ actual tests/** allowlist ∪ {/qa_report.md}}}
-- tests allowlist 外零变化审计：{{PASS/FAIL；/qa_report.md 为唯一例外}}
-- qa_report 本轮生成/更新时间与状态：{{value}}
-- ZIP CRC / traversal / duplicate members / top-level：{{result}}
-- 外部包输出位置：{{题包外或用户明确指定的外部位置}}
-- excluded run artifacts：{{paths}}
-- artifact_digest（排除报告）：{{value}}
-- 题包外交付清单中的 report_digest（如要求）：{{external path/value；不得在题包内创建 sidecar}}
-- 外部动作实际执行情况：{{value}}
-- 明确 NOT_RUN 项及原因：{{items}}
-- 最终声明：{{确认本轮已生成/更新 /qa_report.md，说明零变化审计、弃用/阻塞、完成状态与不能声称事项。}}
+已采用轨迹后环境路径要求时每精确缺失路径独占一行，附 expected_source_or_mount 与 repair_disposition；不以 ENOENT 猜候选错误。
 
-“保存”“已上传”“本地打包完成”或平台显示“进行中”均不能写成 `SUBMITTED_CONFIRMED`；领取/提交下一题须另有授权。
+## 轮次记录（追加，不覆盖历史）
+
+### {{round_id}} — {{date}}
+
+- **目标、版本与适用门变化**：{{本次范围与验收清单；新增门的正式原因，无变化写明}}
+- **独立设计与复用**：{{本次正式义务与评分设计双冻结引用；QC默认许可依据/角色/精确对象；合法tests内正式instruction变更或外部有权负责人变更tests外instruction后的授权正式来源、版本前后、独立重推/双冻结及STALE/重验；不按GT修法、不追认旧candidate失败或放宽有效义务；历史证据与依赖摘要、未审范围}}
+- **开工准入与运行生产**：{{旧必需证据核实/正式替代接受、本轮preimage、admission_status与范围，future_run_plan及修后实际CURRENT_RUN分别列；未准入对象与查源结果}}
+- **发现及裁决**：{{主动发现及独立反馈逐项核实；issue、最小反例，确认授权错误实际修复、候选真错有据不改、未证合法补证、建议不门控、外侧冻结问题只读移交分别列；有依据的不改/撤回同样记录}}
+- **tests 与报告修改、tests外instruction需求移交**：{{实际tests操作范围（默认tests/**+根QA；明示限制优先）、修法/不改依据、原内容/真实diff及终态、原始反馈映射；tests内instruction/runner/shim/helper/config缺陷按授权实际修复并验证，不另设冻结子集；tests外instruction仅列只读对象/依据/影响/移交责任，未改不虚称修复；正式instruction合法变化单列授权来源、版本前后、独立重推/双冻结及受影响STALE/实际重验}}
+- **正反例与实际验证**：{{方法/命令/入口/版本/run/逐项及聚合、未运行原因；引用有效旧证据}}
+- **复核与分歧**：{{本轮报告质量、history_object_status及历史A/B审核状态分列；历史是否为本次必需门引用矩阵required/authority/dependency，不另设状态；对象发现/精确查源结果、受限主张/门控影响/责任、本轮生产缺口及恢复分别列；EXHAUSTED无新来源/权限/相关版本或依赖变化不每轮复查；独立/协调者自检、目标范围、证据和裁决，未独立不冒称；纠正旧行保留原行/来源/原因}}
+- **独立审核与返修循环**：{{完整验收或本次明确要求时记录reviewer实际已读规范、逐项反馈/作业员核实修验、当前版本复检及继续/精确停止；仅显式预算才记余量；无人值守自动推进，局部不默认新增全题/QC门}}
+- **新鲜度与指标变化**：{{受影响STALE与补跑；ΔF/ΔAR/ΔAT及当前累计对账}}
+- **本轮差异与既有异常**：{{主动写入实际操作范围（tests_allowlist默认tests/**+根QA，明示限制优先；不另审批）；规范化真实落点及边界核查；历史/用户/平台变化、来源与影响，不擅删}}
+- **结论与移交**：{{当前FULL/局部实际完成口径，当前tests/报告质量/真实独立QC及历史状态分别列；非必需历史UNVERIFIED不降FULL为LOCAL，自身必需门真实闭合可PASS及已启用模式的UNATTENDED_COMPLETE，不认证旧行为/旧修改；明确历史门未闭合不称原请求全要求完成；候选及外部阶段另列，阻塞对象、门控依据/影响、责任与补验方}}
+
+收口核：标题稳定；本轮仅追加一次；历史事实未抹；当前结论与必需项、来源/issue/run 一致；无假PASS/占位/秘密；本轮差异与历史异常分开；不把局部或不同版本结果冒充整题通过。按 [停止闸门](../references/continuous-execution.md#4-最终回复前的停止闸门) 核没有尚可合法执行的必需恢复/修验/补证/复检；报告准确披露未完成不等于原请求已完成。

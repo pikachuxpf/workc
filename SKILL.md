@@ -1,301 +1,185 @@
 ---
 name: workc
-description: WorkC、ClawEval、PinchBench、Seal 或 RewardKit 单题的测试侧作业完成、返修、作业验证、Oracle/nop、QA 报告与交付流程。只处理这些题包的 tests 侧交付，不承接业务实现或通用质检。题包内最大可写范围固定为 tests/** 与根目录 qa_report.md；完成、返修或作业交付自检必须生成或更新 qa_report.md，其余路径全部冻结。仅在用户明确要求这些题包的测试侧作业，或目录出现 legacy 的 rubrics.py + test_outputs.py、0917 新格式的 criteria_manifest.yaml 与 process/output/safety checks、quality.toml/react_prompt.md 或对应 runner 信号并明确要求测试侧作业时使用。
+description: WorkC、ClawEval、Seal/RewardKit 单题 tests 侧修复与交付。修复/交付/无人值守时主代理是作业员：tests 内确认的问题必须实际修复、验证并记同根 QA，不能只登记或移交；tests 外相关允许材料的问题直接记同根 QA、不修改外侧；独立不写task的质检子代理实读规范审核，作业员落实反馈返修、验证、更新 QA 和复检，直到本次范围真实通过或真实受阻，不以自查代质检。当前题明确且无明示限制时单独“无人值守”默认完整 tests 侧修复验收。历史未证按主张依赖分流，不自动阻断当前全题交付，不删明确必需历史门。也支持明确咨询、静态只读、报告审核及指定运行，按上限不扩写/执行。写集合为当前题 tests/** 全部内容与同根 qa_report.md，用户明示更窄限制优先；tests 外除该 QA 均只读移交，QC 全路径不写；双冻结、GT/oracle答案隔离及既有安全核验许可不变，不做业务实现。
 ---
 
-# WorkC 测试侧作业内核
+# WorkC：作业员修复 tests，独立质检审核交付
 
-## 1. 不可解除的边界
+## 0. 先认角色，再执行 SOP
 
-WorkC 只完成题包的测试侧作业，不完成页面、服务、业务脚本、业务数据、业务报告、业务 ZIP 或 API 状态，也不是普通项目的通用质检 Skill。
+修复、交付及无人值守任务中，**主代理是作业员（协调者），不是独立质检员**。你的交付是实际修好的授权 tests、对应有效验证和同根 QA，不是只给问题清单或审核意见。先主动发现、核实、修复可修缺陷，不等质检替你发现全部问题；自查服务于修复，不能代替独立质检或自己签 QC PASS。独立质检子代理未参与修复、不写 task，按实际规范检查当前交付、提出问题和给可核审核结论；收到反馈后仍由你落实修验和报告。
 
-题包内最大可写集合固定为：
+按 [作业员执行 SOP](references/execution-sop.md) 执行：
 
-```text
-tests/**
-/qa_report.md
-```
+1. **接单定范围**：确定 task、作业类型、写入/运行许可和本次通过门；只有明示咨询、只读、报告审核或指定运行时才按对应职责裁剪。
+2. **正式依据与备证**：从正式输入独立义务/评分设计双冻结，核材料准入、每目标写前内容及验证入口；合法可恢复缺项先补，不造历史。
+3. **主动修 tests**：按范围检查实现、判据、证据、解析、注册聚合与正反例，确认授权缺陷后实际修复，不停在“发现问题/建议修改”。有效测试的候选真错保留规则并记不改依据。
+4. **验证并登记修法**：执行适用合法回归/正式验证，逐 issue 写实际文件/diff、预期/实际、run/版本/freshness，失败继续归因返修；有依据无缺陷不强造改动。
+5. **外侧检查与 QA 对账**：无人值守默认只读检查当前 task tests 外相关允许材料，标准作业按实际依赖/本次要求；发现错误只记依据、影响、责任与移交，不改冻结对象。把已修、不改、验证和外侧发现写同根 QA，送检前回顾补漏。
+6. **提交独立质检**：需独立质检的交付先完成实质报告，再派未参与修复的子代理实读质检规范，审核当前 tests、QA 及外侧记录；不得把自己的自查叫独立质检。
+7. **落实反馈再送检**：核实反馈并分类，授权 tests/报告错误由你修复，补证及受影响验证后更新 QA，交独立复检。完整交付/明确直到通过的任务持续至本次必需门和当前版本独立审核真实通过；局部仅按本次要求复核，不自动加全题门。
+8. **准确收口**：只按当前版本有效证据及实际审核回执报本次 PASS；未通过且仍有合法修复/补证路径就继续。只有真实无法继续、用户停止或显式预算耗尽才停相应范围，列未完成门及责任，不把记录/移交/流程跑完称 PASS。
 
-- 实际 test allowlist 只能在 `tests/**` 内继续收窄。
-- 完成、返修或作业交付自检必须在本轮生成或更新根目录 `qa_report.md`；tests 无需修改时使用 `report-only`。
-- 其余题包路径全部冻结。用户指令、instruction、materialization、复制副本和打包请求均不能扩大写权。
-- **禁止读取题包根目录 `ground_truth.json`**。WorkC 的分析、返修、复检、报告、tests、候选、runner 与独立 reviewer 均无例外；期望值只能从允许的正式载体独立推导。若其他流程声称获得读取授权，必须在 WorkC 外单独执行且其结果不得进入 WorkC 的 claim、expected value、evidence 或认证。
-- **禁止读取或引用题包 `.pipeline/` 内容**：WorkC 不得打开、读取、解析、搜索、摘要或以其他方式消费该目录下的任何文件；`.pipeline` 不是正式规则载体，不得作为 criterion、expected value 或 evidence 来源。引用审计只能在 `tests/**` 与根目录 `qa_report.md` 等允许读取的 work 数据中检查 `.pipeline` 路径字符串，不得进入该目录核对。发现 work 数据引用时，在可写范围内删除并复跑适用验证；冻结路径若由允许来源指出存在引用，只记录该外部发现与路径，不自行读取或修改。
-- 必须修改 tests 外文件才能解决时，记 `OUT_OF_SCOPE/BLOCKED`，不得顺手修复。
-- 纯咨询或明确不修改时可以 chat-only，但必须声明本轮未完成、未返修或未作业交付自检。
+详细的每步输入、动作、产物、返回位置和质检交接要求集中在 SOP；下文是范围、安全及技术合同，不是一套让作业员转职质检的流程。
 
-测试必须反映正式规则，不能用 Oracle 分数反推规则。Oracle 不必为 1，nop 不必为 0；不得为改善分数删除有效 case、放宽正确条件、篡改真值、伪造 evidence、修改 nop 或掩盖基础设施错误。AI 生成或修改的 criterion、check、expected value、judge 结论和 QA 摘要都必须由人工回到正式规则、原始 evidence 与实际 runner 复核。
+**连续执行硬要求**：STANDARD 与 UNATTENDED 均按 [连续执行、环境恢复与验收交接](references/continuous-execution.md) 推进。获准 Docker 验证遇已安装但未启动的 Docker，由作业员自主启动、检查 daemon 就绪后续跑，不只报“环境未开”。静态 QC PASS、局部回归通过、报告准确披露未证均不是完整交付的停止点；必需项还有合法可执行下一步就继续。环境恢复边界、静态/运行复核分流及最终停止闸门以该页为准。
 
-维护本 Skill 自身时转入 skill-creator 元流程。本文件不授权修改任何题包外仓库。
+## 1. 不变的职责与安全边界
 
-## 2. 固定主流程与作业状态
+只处理单题 tests 侧评分设计、抽检、修复、验证与报告，不完成业务实现。
 
-```text
-P0 范围卡
-→ P1 基线契约与库存快照
-→ P2 claim–evidence–scorer 拓扑
-→ P3 不变量与变异控制矩阵
-→ 修改实际授权的 tests/** 子集
-→ P4 变更影响与新鲜度账本
-→ C1 canonical V1 hard gate
-→ C2 独立设计/载体覆盖复审
-→ C3 独立 expected-value 复算
-→ C2a 逐判据对抗反例审计
-→ 更新根目录 qa_report.md
-→ C4 QA 平账与状态对账
-→ 交付退出门与差异审计
-```
+禁止 WorkC 的任何参与者读取、引用或依赖 .pipeline/ 内容，不搜索、hash、挂载或通过副本/他人结果绕过。当前题相关 ground_truth.json/oracle 的独立 QC 静态核查默认许可，无需逐题读取批准；独立义务/评分设计双冻结后，按 [质检默认许可与开工准入](references/qc-exceptions-and-admission.md) 由独立 QC reviewer 核精确对象。协调者和修复角色不读 GT、不接收隐藏答案，不开放运行时答案依赖、普通候选或 judge 输入、答案外发。作业允许执行且必要、合法隔离可核时，本地 oracle 验证亦默认许可；独立 QC 可安全隔离执行，或协调者编排运行而仅收 QC 脱敏回执，不再索要 oracle 单独批准。
 
-开始前固定：
+题包写范围统一按第2节；仅作业员（协调者）单点写入，子 Agent 不写题包，不并行改同一题包，不通过临时副本、命令产物或报告绕过边界。不创建题包 sidecar、补丁副本或 staging 清单。
 
-- `target`：`test-delivery` / `test-harness` / `consultation` / `package`；
-- `mutation`：`none` / `tests-allowlist-plus-report` / `report-only`；
-- `execution-ceiling`：V0 text-only、V1 parser-only、V2 harness-import、V3 candidate-run、V4 judge-run、V5 external-action；
-- `delivery`：`chat-only` / `completed-assignment` / `full-package` / `platform-submit`；
-- `architecture`：`legacy` / `seal-rewardkit-0917` / `hybrid` / `unresolved`。
+不得读取、回显或转写凭据值。秘密只由获准、不会启动候选的受信任 judge 运行时解析既有 secret reference；候选及其工具不继承 judge 凭据。完成请求不自动授权新外部模型上传、候选执行、算法评估、平台提交或领取下一题。外发和不可逆操作需要对应明确授权。
 
-候选运行、judge 和外部动作分别需要当前题目与用户授权。完整包只能写到题包外或用户明确指定的外部位置；打包不扩大写权，也不能替代 QA 报告。详细边界见 [routing-and-authority.md](references/routing-and-authority.md)。
+执行 `.sh` 或容器入口前必须先确认实际 shell；Windows 路径、MSYS 转换与容器挂载须按实际环境确认，宿主 import/pytest 不冒充声明的 Linux verifier。当前 DELL Windows 工作站的桌面工具默认是 PowerShell；需要运行题包 Bash 入口时，显式使用已核验的 Git Bash `D:\tool\Git\bin\bash.exe`，不要把 PATH 中其他 `bash.exe`（例如 WSL 启动器）当作 Git Bash。
 
-当前批次正式指令：评分容器运行 `harbor-rewardkit==0.2.0`，题包须统一适配并精确固定到该版本——0.2.0 与 0.2.1 对"装饰器自动注册后再显式注册"的处理不同，会影响准则数量与权重；`0.2.*` 等前缀写法视为未固定，本地验证与每个 run 都必须标注实际精确版本。规则细节见 [seal-rewardkit.md](references/seal-rewardkit.md) 的"7.0 RewardKit 版本固定"。
+### 1.1 本机环境合同（当前 Windows 工作站）
 
-### 2.1 P0–P4 Contract Gates（先建契约，后允许返修）
+这段记录是当前本机的可复核基线，不把单台机器的版本或路径扩展成所有 WorkC 主机的硬性依赖；环境变化时重新预检并记录实际值。
 
-这五个产物可以先保存在工作笔记，并在交付时投影到 `qa_report.md`；不在题包内创建额外清单文件。**没有完成受影响的前置门，不得编辑评分文件；前置门失败时标 `BLOCKED`、`DEPRECATED` 或 `ABANDONED`，不得通过放宽 test、猜测 schema、伪造 evidence 或修改冻结路径绕过。**
+- **Shell**：PowerShell 可用于文件核查和只读命令；题包中的 `tests/test.sh`、`scripts/*.sh` 和容器命令使用显式 Git Bash `D:\tool\Git\bin\bash.exe`。先用 `bash -lc` 确认 `BASH_VERSION`、`command -v python3` 和 `command -v docker`，再运行入口。
+- **已核验能力**：Git Bash `5.3.15`、Python `3.12.7`、`pytest` 可用、Docker daemon `27.5.1` 可用。Podman 未安装不构成阻塞，除非当前正式 runner 明确要求 Podman。
+- **运行边界**：verifier/cache/log 写入题包外获准隔离目录；不创建 task sidecar、补丁副本或 staging 清单；普通 candidate、judge、外发和上传仍需独立授权。
+- **禁区与挂载**：`.pipeline/` 对所有角色永久禁读、禁引用、禁 hash、禁挂载；普通 candidate/verifier/judge 不挂载 `ground_truth.json`、隐藏答案、秘密或整题目录。挂载表按 `host→target / producer / consumer / ro-rw / authority` 实际记录。
+- **基线与报告**：宿主目录不是 Git 仓库时，不用 `git diff` 冒充原题基线；使用可信 `ROUND_PREIMAGE`、实际文件终态、正式 manifest 和题外隔离 artifacts。没有经典 `always_failing_results-*-with-paths.json` 或原始 `task_path` 时，经典历史 A/B/phantom-fix 对照标 `UNVERIFIED`，不阻断可独立成立的当前 tests 修复。
+- **状态含义**：工具安装、`bash -n`、`py_compile`、Docker daemon 健康或 verifier-only 拒绝空证据，只能证明相应预检/局部验证；不得据此填 `CURRENT_RUN=VERIFIED`、候选通过或整题技术 PASS。
+- **启动恢复**：上述版本是历史可核基线，不保证当前 daemon 在线。获准运行时自行核已安装组件并启动停止的 Docker Desktop/对应服务，按连续执行合同有界检查并续跑；不因普通启动重复索权，不扩为安装、重置或重启正在工作的服务。
 
-| 门 | 编辑/认证前必须形成的最小产物 | 未通过时的处置 |
-|---|---|---|
-| P0 Scope Card | target、mutation、实际 tests allowlist、V0–V5 上限、delivery、禁读项、动态运行授权与隔离前提 | 超出范围或缺授权：停止该动作；冻结路径问题记 `OUT_OF_SCOPE/BLOCKED` |
-| P1 Baseline Contract | 正式载体与 precedence、architecture/真实加载链、canonical 结构、`R0/T0/N0`、runner/聚合、runtime loaded path/digest、冻结输入与 evidence root 的 owner/writeability | identity、结构或 runtime 不能可靠建立：不猜数，指标 `N/A`；不能做 profile-specific 修复 |
-| P2 Claim–Evidence–Scorer Topology | 每个 score-bearing identity 的 formal claim、触发条件、权威真值源、producer、候选可达/可写性、runtime ID、权重链、fallback 和三分归因 | 正向 claim 没有可信真值源、service 可达性或唯一 authority：该 claim `BLOCKED`，不能由候选日志/自述补足 |
-| P3 Invariant / Mutation Matrix | 受影响不变量、最小正反例、伪造/空集/服务失败等适用控制及其 expected result | 控制缺失、空集自证或 evidence 可伪造：不能标 FIXED 或认证 |
-| P4 Change-Impact / Freshness Ledger | 每次改动→受影响 claim、identity、validator、control、aggregation、必跑 run；所有引用 run 的 digest 与 freshness | 任一适用 run 旧、范围不足或来自不同环境拼接：`STALE/UNVERIFIED`，不能认证 |
+## 2. 先选本次作业，固定验收范围
 
-P1 不是只记录一个总 hash：它必须足以重建“什么在运行、什么在计分、谁生产证据、候选能否改写”。正式 source 版本变化时新建 revision baseline，不覆盖旧基线。P2 的 evidence 只有三类：**verifier/authority-owned**（可建立真值）、**candidate-owned**（只能证明候选行为）、**infrastructure-owned**（不可用时归 infrastructure）。候选可写路径即使被 verifier 复制、重命名或加 hash，也不会变成独立真值。
+从用户请求直接选择最小充分作业，不反复询问已有答案。仅 genuine 权限或目标分歧无法解决时停下；环境与证据事实自行核查。修改 Skill 自身转入 skill-creator，不进入题包作业。
 
-P3 的不变量按受影响面选择，不要求盲跑大而无关的全量套件：范围隔离、source authority、topology/weight closure、正向非空性、live service 无回退、双模式 trajectory、锚点污染、归因和 report freshness 是常见集合。发现的每个 tests-side 缺陷在关闭前必须晋升为常驻回归：保留最小反例、正例、预期、issue ID、run ID 和 freshness；确实无法构造时维持 `BLOCKED`，不得写 `FIXED`。
+**现行写范围（统一定义）**：目标明确的 tests 修复/交付作业，作业员可修当前题 `tests/**` **全部内容**及同一题根 `qa_report.md`；完整修复与默认无人值守不另造更窄保护子集、不索要逐文件批准。tests 内的 instruction/正式需求载体、runner、judge、helper/shim、`test.sh`、配置及依赖描述等均可按正式依据修复，不因名称、用途或 legacy 身份特别冻结。`tests_allowlist` 仅记录实际范围映射，默认 `tests/** + qa_report.md`，不是额外保护筛选；用户明示局部、路径限制、只读、禁改或禁运行仍优先，运行权另核。写前规范化实际目标，真正链接/别名/挂载或重定向落到 tests 外的目标不因入口在 tests 内取得写权。tests 外除同根 QA 全部只读、不修改；外侧 instruction、业务实现、环境/基础设施等仅核允许材料、记录并移交。QC 仍对 task 全路径不写；此写许可不授予秘密、隐藏答案或 `.pipeline/` 的读取/泄漏权限，也不授权业务实现、候选执行或外发。
 
-P4 的 `FRESH` 只在全部会影响结论的输入、runtime loaded path/digest 和 run scope 一致时成立。不得把不同 run 的局部 PASS 拼成完整认证。若 P0–P4 的强制行不完整，范围与报告可以支持 `test_delivery_handoff_ready`，但 `evaluation_certified` 必须为 `NO/BLOCKED`。
+**问题处置（不是仅有写权限）**：修复/交付作业内，按规范化实际目标区分内外；**tests 内本次范围已确认的问题必须由作业员实际修复、完成适用合法验证，并把依据、实际变更及结果记入同根 QA**。主动发现和独立 QC 反馈适用同一义务，不得以只登记、建议修改、移交或等待 QC 代替修复；runner/helper/judge/instruction 等同样适用，不能因文件类型标成 OUT_OF_SCOPE，内部可修的验证入口故障也应先修后验。疑点先核实，候选违反有效测试则保留规则；明确只读、局部、指定运行等上限仍优先。真有证据保全、权限或安全/执行条件阻止时，写具体动作、结果和影响，继续其他可修范围，不用笼统“环境问题”跳过内部修复。**tests 外除同根 QA 均不修改，发现的相关允许材料问题直接记入同根 QA**，列位置/版本、证据、影响及责任/移交状态；不要求先修外侧才能交付，记录也不等于外侧已修。外侧问题不自动新增通过门，只有实际影响本次必需判据时才限制对应结论。tests 内确认缺陷仍未修、适用必需验证未闭合时，该范围不能 PASS；外侧已按要求记录且无未闭合必需依赖时，不因外侧缺陷仍在而卡住当前 tests 交付。
 
-### 2.2 C1–C4 交付闭环（冻结差异后再认证）
+**tests 内正式 instruction 合同变更**：先从获准正式来源独立确认缺陷与合法修法，按写前备证要求保全可信 preimage，在同根 QA 记录实际变更、正式来源/版本前后及影响。合同变更使受影响义务、评分设计及相关证据标 `STALE`；由未接触隐藏答案的设计角色从新正式输入重推并依次双冻结受影响范围，再重核 tests、注册聚合、候选可见载体及适用真实验证，未受影响有效证据可复用。已接触答案的 QC 不承担重设计，仅按新冻结独立核终态；不得据 GT 放宽规则、以新合同追认旧候选违规或改写旧事实。外部有权负责人改变 tests 外正式合同，也按同一失效/重推/重验接口记录外部来源，不由作业员改外侧文件。
 
-P0–P4 约束返修过程；C1–C4 负责在最终差异冻结后发现遗漏、陈旧结果和报告自相矛盾。它们只消费现有正式载体、validator、回归和报告，不新增写权、评分身份、隐藏真值权限、固定 canary、全局 RewardKit 版本或第二份 QA 报告。详细算法见 [pre-delivery-qa-fusion.md](references/pre-delivery-qa-fusion.md)。
-
-| 门 | 必须闭合的交付事实 | 失败/变更后的处置 |
-|---|---|---|
-| C1 Canonical V1 Hard Gate | 从真实 runner/validators/self-tests 识别唯一 canonical V1 入口；覆盖适用 schema/TOML/YAML、identity、mapping、aggregation、carrier/path 和 fail-closed drift controls；命令、输入 digest、RC、输出与 scope 可复核 | 无唯一入口、局部脚本拼接、validator 未实际阻断或任一项失败：V1 不通过，不得把局部 PASS 写成 tests-side 完整自检 |
-| C2 Independent Design / Carrier Re-audit | 由未参与当前修复的独立 reviewer 从正式 claim 重新审查 score identity、正反条件、authority/producer/writeability、source carrier 清单、manifest/runtime closure 与遗漏角度；只读复审且不继承“已修复”结论 | 发现新 defect 或载体/claim 漏项：登记 issue，回到受影响的 P1–P4 修复；最终差异改变后此前 C1–C4 全部 `STALE` 并从 C1 重启 |
-| C3 Independent Expected-value Recalculation | 对 checks 常量、manifest/quality 文本、边界值、集合、计数、权重与总 reward，从正式非禁读载体独立复算并与实现、报告三方比对；无法独立推导写 `BLOCKED/N/A` | 不一致不能用 Oracle/GT/judge 分数覆盖；修复后重跑 C1、C2、C3，所有引用旧 digest 的结果失效 |
-| C2a Per-criterion Adversarial Counter-example Audit | 对**每条** float 判据穷举构造最小反例（不抽查）：under-strict（该低分得高分）与 over-strict（该高分得低分）双向各至少一个，优先实跑、不可行才静态推演并注明；含等价解枚举门（硬编码/正则/`==` 判据 ≥3 个合法等价形态，任一丢分即 over-strict）与生成式双反例门（深内容 vs 关键词堆砌分差 <0.3 = 浅代理，改 likert） | 任一反例证明判据放水/错杀 → 该判据 issue，修复后从 C1 重启；静态推演不列反例本体与预测分 = 未审 |
-| C4 QA Accounting / Status Reconciliation | 机械核对 `R0/T0/N0`、`F/AR/AT/A/DR/DT/D`、issue 状态、run freshness、三分归因、C1–C3、allowlist diff 与四个交付状态；结论只由底层证据派生 | 任一计数、issue、run、blocker 或状态矛盾：报告不闭合；只降级受影响结论，不以多数通过或摘要覆盖底层 evidence |
-
-独立 reviewer 可以是未参与当前修复的子代理或人员，但其结果不等于 `human_review_status` 或 `technical_lead_review_status`。修改后必须“重启闭环”，不能只补跑失败项后与旧 PASS 跨 run 拼接。
-
-**独立/子代理复审的强制产出下限**：C2/C3/C2a 委托给子代理或自审时，验收前必须核对产出下限，任一门失败即拒收重跑，不得默默接受——(a) C2a 对每条 float 判据给出 under-strict 与 over-strict 各至少一个反例（输入+期望分+实际分），实跑或注明静态推演及推导过程，并发布"实跑覆盖 M/N"与"等价解覆盖 M/N"统计；(b) 报告体量低于同批中位数 30% 即拒收——缩水报告是"没逐判据读代码"的最强信号；(c) 随机抽 3 条 `@criterion` 对照 `checks.py` 函数体验证发现是否属实，任一不符即拒收并要求打开全部函数体；(d) 全表零反例时重新逐判据检查，确属穷尽必须逐条说明。规则文本不会自我执行，这些门是把规则变成验收标准的方式。
-
-#### Schema-safe manifest / validator placement
-
-当前任务正式 schema 与实际 runner 优先于历史示例。只有正式 schema 明示允许扩展时，才能向 `criteria_manifest.yaml` 添加 evidence registry 或 validator metadata；**不得为了满足 WorkC 抽象要求添加未知顶层字段。**若 schema 不允许或 runner 不加载该位置，registry/validator 必须位于 runner 已批准、不会被自动发现为 scoring module 的 tests-side 位置，或由不可变 harness 提供。找不到合法位置即 `BLOCKED`。无论落位何处，validator 必须在 scoring runner 前 fail-closed 执行，记录路径、digest、启动命令及至少两项漂移负控结果。
-
-## 3. 架构识别与 profile 分流
-
-文件名只是候选信号，最终沿 `test.sh`、task 配置、import/registry、结果与聚合链确认：
-
-| 信号 | profile | 评分身份 | 处理 |
+| 作业类型 | 请求示例 | 默认写入与执行 | 本次完成口径 |
 |---|---|---|---|
-| `tests/rubrics.py` + `tests/test_outputs.py` | legacy | 实际评分链消费的稳定 `RUBRIC_*` 与独立评分 `test_*` | 保留旧架构，不机械迁移 |
-| `tests/criteria_manifest.yaml` + 三个固定维度目录 | seal-rewardkit-0917 | `quality.toml` 的 active `[[criterion]]` 与 `checks.py` 实际注册 check | 执行 0917 结构和 React 前置门 |
-| legacy 与新版链同时被加载 | hybrid | 按各自实际加载链取身份 | 分链审查，不任选一套 |
-| manifest 单独存在、结构缺件或加载链不明 | unresolved | manifest 不建立身份 | fail closed，追正式 claim/runner |
+| CONSULT 咨询 | “区别在哪”“为什么不过”“只分析” | 不写、不运行题包代码 | 给证据支持的评估即可，不启动修复或验收 |
+| READ_ONLY 只读抽检 | “静态只读质检，不产生文件” | 不写、不执行 import/collect/题包脚本 | 完成指定范围静态审核；动态未验不影响只读工作完成，不声称动态 PASS |
+| LOCAL_REPAIR 局部修复 | “修这个 parser”“按这几条反馈返修” | 按本节明示局部范围修 tests 及根报告；执行相关合法验证 | 确认缺陷修复、正反例和影响回归、报告与本轮差异闭合；不承诺整题验收 |
+| FULL_ACCEPTANCE 完整验收 | “整题 tests 交付自检”“完整验收直到 pass” | tests/** 全部内容及根报告；完整适用验证 | 全题义务、规则、注册聚合、真实 verifier、必需 judge 和已采用外部门均有有效证据 |
+| REPORT_QC 报告审核 | “核 qa_report 的归因和修法” | 默认只读；要求修报告时仅根报告；修 tests 需另有授权 | 分别核本轮报告质量与适用历史失败 A/B 归因，不要求候选满分或自动整题重审 |
+| RUN_ONLY 指定运行 | “用已有轨迹重评分”“运行 verifier” | 执行指定已授权模式；报告仅在已授权时更新 | 实际链健康完成且结果可复核；不额外启动候选或外部服务 |
 
-0917 的 `checks.py` 中，`@criterion` 装饰器与底部 `rk.<name>(...)` 注册调用是同一个激活单元：停用某个 check 时两者必须同时注释或同时删除，只改一侧会造成未装饰注册或幽灵残留，按结构 drift 处理；细则见 [seal-rewardkit.md](references/seal-rewardkit.md) 的“注册与 runtime 一致性”。
+“修复 tests”未明示局部限制时，按当前题 tests 全范围检查修复；明确要整题修复/交付或直到整题通过时选完整验收，附带反馈只是起始线索，不因有反馈改成 LOCAL_REPAIR。只有用户明确限定某文件、某问题或“仅按这些反馈”时才选局部作业；局部验收范围与写路径边界分开，关联依赖可按正式影响修验，不自行冻结其他 tests 路径。“直到 pass”沿用明确的验收对象，不授权放宽有效规则或突破 tests/QA 边界。用户同时要求 QC 与完整验收时分别收口。
 
-0917 profile 的必要结构是：
+在执行前固定一份**本次验收清单**：作业类型、目标范围、正式来源/版本、tests_allowlist 实际范围映射（默认 tests/** + QA，仅按用户明示限制裁剪）、本节写边界、QC角色/精确读取范围、qc_permission_basis=WORKC_DEFAULT、独立义务与评分设计双冻结、admission_status及证据、future_run_plan、可执行模式、必需验证、通过条件和不属本次门的事项。写作业放入同一根报告；只读作业保留在回复，不造文件。细则见 [路由与依据](references/routing-and-authority.md)。
 
-```text
-tests/
-├── criteria_manifest.yaml
-├── process/
-│   ├── checks.py
-│   ├── quality.toml       # optional
-│   ├── reward.toml        # optional
-│   └── react_prompt.md    # quality.toml 存在时 required
-├── output/
-│   └── checks.py
-└── safety/
-    └── checks.py
-```
+### 历史未证不自动阻断当前交付
 
-`process`、`output`、`safety` 每个目录在路径规范化后必须恰好包含一个 canonical `checks.py`；缺失、重复、大小写或归档成员碰撞均为结构错误，不得猜选。三个文件可以没有独立 deterministic scoring identity，但物理结构仍必须存在。Deterministic-only 合法：三个 `checks.py` 完整时，`process/quality.toml`、`process/reward.toml` 和 `react_prompt.md` 可以缺席。Legacy 不受该目录结构约束。
+按 [历史对象、审核与交付门分流](references/verification-and-reporting.md#72-先发现对象不能用报告自证不适用) 分别确定：历史对象是否存在、历史主张是否已证、该历史认证是否为本次必需门。`APPLICABLE/UNDETERMINED` 或历史 `UNVERIFIED` 本身不产生交付门。只有用户明确要求历史验收、实际采用且适用于具体对象的正式条款，或当前交付结论实质依赖旧行为/旧修改时，才把相应历史证据列为必需并写明依据与影响。FULL_ACCEPTANCE、无人值守、QA模板或发现旧失败对象都不自动要求所有旧候选归因通过。
 
-架构识别只决定如何完成 tests 侧作业，不产生业务文件写权。旧式细则见 [legacy-claw-eval.md](references/legacy-claw-eval.md)，0917 Seal/RewardKit 细则见 [seal-rewardkit.md](references/seal-rewardkit.md)。
+历史合法查源仍须做；确已穷尽后记录具体主张/对象、缺件、实际来源/动作/结果、影响及恢复责任，没有新来源、权限或版本变化就不重复查已穷尽来源。继续**当前全题**可独立成立的修复、验证、报告和独立质检，不悄悄降为局部。不存在本次历史必需门且当前全部必需项真实通过时，可报当前 tests 侧完整交付 PASS 或 UNATTENDED_COMPLETE，同时明确历史未证、不声称历史/外部验收通过。明确要求的历史门仍未闭合时，不能报包含该历史验收的原请求全通过。
 
-## 4. Claim 来源与 0818 防回归护栏
+当前修法由正式依据、本轮可信 preimage、实际 diff/终态与有效验证证明；旧原task_path用于历史修改对照，旧轨迹用于旧候选行为，各按主张依赖取证，不一律捆绑。旧报告中的错误/未证结论须核实并保留来源、纠正理由与未证范围，不能删行或改成“本次未请求”逃避实际错误修法；本轮漏保全/漏登记仍是作业员生产缺口，不享历史灭失免责。未审历史可明确“本次未请求”，已审但缺证保留 UNVERIFIED，只有确认无历史对象才 N/A，不把未证改成 PASS。
 
-先由 task/materialization 确认正式载体，再将要求拆成原子 claim，至少记录：
+### 修改前备证与自动补证
 
-```text
-claim_id | source/carrier | source_class | scope | version/date
-modality | actor | known_answer_source | question_budget_class
-required_service/capability | availability/credentials
-explicit_precedence | recast | resolution | reason
-```
+标准和无人值守作业都先按 [质检例外与开工准入](references/qc-exceptions-and-admission.md) 判定依赖范围，再按 [材料准备与指标建账](references/evidence-preparation.md) 取证：独立义务与评分设计双冻结后、首次 tests 写入前，按本次结论的实际依赖建立逐项证据需求；必需权威原task_path和历史失败轨迹先核，本轮目标preimage先保全，评分身份基线另建不作统一准入门。CURRENT_RUN只核已有结果的适用性，未来修后结果此时仅核生产计划，修后实际取得；不把每类历史材料强加到所有独立局部作业。作业员将可核起点和最小完整修改单元/原内容引用先存入同一根报告，不私造.bak、整题副本或sidecar；无法合法保全时先不写该目标。hash只证明字节，不证明历史权威或修法正确。
 
-来源可以决定 tests 应覆盖什么，但不能扩大写权。适用以下已发布验收护栏，后续批次不得复发：
+缺项先沿明确授权来源自动查源、核正式映射/既有artifact，按授权正式重评分或生产新证据，再由独立reviewer核验；未查不等于不可恢复，不可一句“证据不足”结束。必需旧材料必须实际 VERIFIED 或有正式接受的具体替代记录才准入依赖作业；有对象缺旧历史时新运行不能冒充旧轨迹，当前preimage不能替代QC原task_path。修前核 future_run_plan 的授权、入口、隔离及证据可生产条件，修后实际取 CURRENT_RUN，不要求修前已有修后结果，也不把计划标 VERIFIED。确已穷尽或缺权限时逐项列动作、结果、剩余材料、影响和责任；历史验收不准入，不启动依赖返修循环。独立不依赖历史的当前范围（包括全题）可单列准入与交付；历史对象/证据状态不自动增门，确有本次必需历史门时仍保留，不能移除后冒称原请求全通过。
 
-1. **问题计数**：bootstrap、身份建立和平台接入问题不占任务问题上限；同时索取任务事实的混合问题按实际任务意图计数，不按问号或消息数机械计。
-2. **已有答案**：instruction/input 已提供的信息不得设为必须先问；确实缺失、冲突且影响结果的信息仍可要求澄清。
-3. **Actor 绑定**：模拟用户 persona 约束模拟用户，不得错施于 agent；只有正式 agent instruction 或评分 claim 明确绑定 agent 才可评分。
-4. **要求强度**：建议、可研究或可考虑的内容不得升级为强制评分项；明确 mandatory 且 evidence 可验证的要求除外。
-5. **HTML evidence**：页面语义 judge 使用可见、相关的标题、正文、列表、表格、链接文本和可访问名称；禁止固定字符盲切或用 CSS/JavaScript 偶然关键词替代可见内容。明确评价源码实现时，源码 evidence 与页面语义 evidence 分开。
-6. **服务与凭据**：未披露、不可用或缺可信环境凭据的服务不能成为候选硬门；正式依赖但环境缺失时记 infrastructure/BLOCKED，不要求候选寻找 secrets。
-7. **日志归因**：候选输出、harness/exec 诊断噪声、基础设施失败必须分开；wrapper banner、shell warning 和 verifier 日志默认不进入候选质量判断。
-8. **评分身份**：仅作为 assertion message、异常文本、日志标签、测试标题或 display name 的 `RUBRIC_*` 常量不是评分身份；必须能追到 judge、registry、结果或正式聚合映射。
-9. **双模式轨迹解析（常驻）**：轨迹判据必须同时接受 solution 模式与 agent 模式两种证据形态——solution 模式常带 process-events.json 紧凑轨迹或自带 `{action,target}` 参数的 ATIF；agent 模式只有真实会话导出的 ATIF，tool_calls 仅携带 `function_name` 与 provider 形态参数（如 `file_path/path/url/command/code`），永远没有 `{action,target}` 键。只读 `args.action/args.target` 或匹配 solution 专有动作令牌（如 `cleanup_after_confirmed`）的判据在 agent 模式下恒 False/漏计。凡 manifest 行 evidence 含 `trajectory` 的判据，交付前必须用 agent 形态的合成 ATIF 夹具跑过解析断言；清理/落点类动作优先以工作区终态（policy active naming 声明的路径存在性）为模式无关证据，叙事令牌只能作辅助。仅用 oracle 轨迹验证的轨迹判据视为 UNVERIFIED。
-10. **权重单一口径（常驻）**：先从已验证的实际 RewardKit/runner 版本、加载路径与 runtime result 确认逐项 weight 语义，再要求 manifest/索引投影与运行时单条评分单元一致；例如仅在已验证为 rewardkit 0.2 对应行为时，deterministic 行映射 checks.py 注册权重、judge criterion 行映射 quality.toml `[[criterion]].weight`，缺省 1.0 并按实际维度规则归一。桶级（`$checks`/quality）与维度级权重按当前 runner/reward.toml 的真实层级处理，禁止把归一化值或上层权重泄漏进行内。版本或封装不同时必须通过 runtime discovery 重建映射，不能套用 0.2 或历史示例。跨层混用多套口径会使"行和恰为 1"的错误校验自洽通过——核对时必须沿 criterion→bucket→dimension→reward 真实链逐层复算，并逐行与运行时注册权重比对，不做聚合和校验替代。
+有权威来源证明原题评分集未经返修时逐项固定原评分身份和F根因台账；仅作业员自己未改不足以证明原版。历史原基线不可恢复可另立明确标注的接手阶段基线，不冒充原题累计。授权范围内用 `scripts/check_qa_ledger.py` 的stdin声明检查与算式复核，不能以工具checklist_ready冒充真实证据或QC PASS。只读仅静态查源、回复台账，不写不运行。
 
-`ground_truth.json` 的禁读规则继续优先。两个正式载体无法消解时，只阻断受影响 claim。
+### 显式无人值守模式
 
-### 4.1 判据自证与空集护栏（常驻，20260920 批次起）
+用户下达“无人值守”“无人值守模式”或明确等价的执行指令时，进入 `execution_mode=UNATTENDED`，按 [无人值守闭环](references/unattended-mode.md) 自动执行；咨询/引用该词不触发。唯一当前题明确且无用户明示更窄范围或只读/禁改限制时，默认 `FULL_ACCEPTANCE`，本请求即许可第2节当前题 tests/** 全部内容修复与同一根 qa_report.md 更新，作业员记录实际 tests_allowlist 范围映射，不再索要重复或逐文件批准。已有局部作业标签不限制此默认，用户明确的局部/只读/禁运行及路径限制仍优先；无目标不猜题，Skill维护不启动题包。写集合仍硬锁 tests 与根报告，不增加候选/外发权限。用户退出即停止模式，不假定跨会话持久或后台常驻。
 
-每条确定性判据交付前逐项过完这组检查，任何一条不满足即视为判据缺陷：
+作业员先自动完成必要备证、独立设计双冻结、自查 tests、集中修复和真实验证；再默认只读检查当前题 tests 外相关允许材料，发现问题按路径、证据、影响、责任和移交状态写同一根 QA，未发现也记录检查范围，不扫整个工作区、不触及禁区或秘密。GT/oracle 隐藏答案仍由独立 QC 角色核，不让修复角色读取。随后自动派未参与修复、不写题包的独立质检子代理实际阅读质检主文档及已采用条款，审当前 task 的 tests、本轮报告质量、适用历史失败 A/B 归因和外侧问题记录。反馈未通过就核实可修项、修 tests/报告、补真实验证、更新 QA、独立复检，循环无需用户催促。只读仅自动静态检查与独立审核，不写不运行。本轮报告质量 QC 与当前版本独立复检纳入成功清单；历史失败 A/B 归因另核对象与旧材料。只要本轮写了 QA，本轮质量审核不能 N/A；历史对象确认不存在才 N/A，对象未知或缺关键材料为 UNVERIFIED，不用报告自述N/A、自检或无表冒充独立 QC。
 
-1. **空证据集不得自证**：正向、序列、完成度或过程型谓词含 `all(...)`、`any(...)`、`sum(checks)` 时，必须先回答“集合为空时结果是什么”。凡空集能使分数非 0 或直接满分（如 `all(x in eps for x in business if x in eps)` 在无任何业务调用时恒真），必须显式前置“关键证据存在”门（核心动作集合非空、目标文件可解析等），否则 0.0。空集通过 = 判据为空壳，与关键词空壳同罪。**例外只能是正式规则本身为负向安全事实**（如“未调用禁调 endpoint”）：此时服务可用且权威审计明确返回空 list 可以证明未发生该动作；服务不可达/载荷无效不是空 list，绝不可借此给分。
-2. **判据证据不可由被评者写就**：沿生产者链核对每个 evidence 文件——谁创建、挂在哪个卷、agent 进程是否持写权。agent 可写卷（如 `/logs/agent/**`、`/tmp`）上的文件只能作 candidate-attributable 行为证据，不得作为判据真值来源；verifier 侧“复制/改名/算哈希”不改变来源可伪造性。修复方向按优先级：服务进程内查询端点（例如 `/v1/audit`）且其**底层审计状态也必须由服务/verifier 持有，候选不能通过其他 endpoint、共享卷或挂载修改、删除或回滚** > 挂载在 verifier 侧、agent 无路径可达的副本 > 原则上不用（见下）。仅 GET/“只读”路由本身不是 authority 证明，P2 必须核验 producer、backing state、候选 reachability 与 mutation path。一旦采用服务活真值，**禁止任何文件回退**：成功响应（含空列表，即真实 nop 状态）必须原样当真返回——把合法“空真值”误判为服务不可用而回退读文件，等价于给伪造证据留门（20260920 返修实测缺陷）；连接失败/超时/无效载荷一律 fail closed（判据按缺证据记 0，基础设施归因交 runner/报告），不得改读任何 agent 可及副本。行形状校验（int `seq` + str `ts` 之类的“生产者盖章”）不构成担保——这些字段同样可被伪造，只许作纵深防御，禁止作 fallback 准入条件。禁调/完整性类负向判据（如 forbidden-call purity）优先“读活真值”而非“文件里没出现坏行”，避免判据逻辑向 agent 泄漏。
-3. **正控与负控判定**：验证预期必须匹配 claim，而非机械要求 oracle 满分或 nop 为 0（WorkC 总则：Oracle 不必为 1，nop 不必为 0）。正向过程/完成度 claim 在没有必要的肯定性证据时须为 0；负向安全 claim 可在**可达且格式有效的权威 live audit**明确显示无违例时合规，即使该 audit 为 `[]`。伪造 evidence 文件不得改变任何结果；审计不可达或载荷无效时，所有依赖其否定事实的分量均不得得分，并标为 infrastructure。上述按 claim 的正、负控任一不成立即判据缺陷，须修到成立或如实记 BLOCKED。
-3a. **顺序/守卫分量禁止空证据 auto-pass（20260920 返修常驻项）**：形如 `not (sends and cleans) or cleans[-1]>sends[-1]` 的空集合守卫在动作缺席时恒真——模式专属令牌（如 solution-only 的 `cleanup_after_confirmed`）在另一模式下不被解析时，`sends`/`cleans` 均为空，守卫放行，把"无顺序证据"当"顺序正确"（实测：premature cleanup 先删 pending 再取得成功回执仍得满分）。顺序分量必须要求两侧证据同现（`bool(a) and bool(b) and a[-1]>b[-1]`）；反例夹具必须含 premature 顺序（先清理后确认）与正例（确认后清理）各一条，只测正例测不出 vacuous truth。每次返修判据后，上轮失败反例必须转为常驻回归断言。
-3b. **manifest 契约机检前门（常驻）**：当前正式 schema 明示支持时，manifest 顶层应声明 `evidence_sources` 注册表，行内 evidence 只能引用已注册源；schema 不支持扩展时，必须在 runner 已批准、不会被自动 discover 为 scoring module 的 tests-side 位置，或不可变 harness，提供等价 registry。两种落位都要在 scoring runner 启动前执行只读 mapping validator（fail-closed，非零退出终止评分，置于 test.sh 内 `rewardkit` 之前），至少校验：angle_id/注册身份 1:1（无 orphan/ghost/重复注册）、逐行 weight==运行时 Score.weight、维度/桶/root 权重链、checks.py 默认证据路径与 runner 冻结目标三方一致。没有 schema-safe 落位即 `BLOCKED`，不得添加未知 YAML 字段。validator 零第三方依赖（官方镜像可能无 PyYAML，需内置确定性子集解析器或逐行正则），加载 checks 模块用 importlib 固定路径、禁止 eval/exec 动态执行。validator 自身须附两类漂移负控（改一个行权重、改一个未声明 evidence 名）证明其真的会失败。
-3c. **过程判据正向绑定与权威集合（20260920 返修常驻项）**：以"服务端未拒绝/事件未发生"论证"规则已被采用"是反向证据，不能通过——必须正向绑定期望对象逐项证据（如注册表全部空昵称实体在明细中的明确 `skipped_*` 决策标记 + 创建记录零交集）。分页/搜索/枚举类判据的期望集合必须从权威输入（active policy 指向的 CSV 等）独立推导，不接受任意 query/无关实体计分，也不得以常量计数代替集合来源。偏好合并类判据须核 before/after 字段级语义与同主体，不得只看事件类型顺序；"首次系统写入"锚点必须涵盖全部副作用动作（写入、发送、清理），遗漏任何一类都会让 grounding 判据漏计。
-4. **服务真理来源绑定**：判据依赖 mock 服务内存态时，连接目标必须来自题包正式 env 注入（docker-compose/task.toml 的 env，如 `ATLAS_HOST`），不得硬编码题包外地址；解析失败或服务不可达时按“验证、新鲜度与归因”中的三分归因规则记 infrastructure failure，不得静默改读 agent 可写副本充数。
-5. **锚点串不被载体内容污染（20260920 返修常驻项）**：轨迹/审计类判据用锚点串（文件路径、成员签名、endpoint 等）定位”agent 做了某事”时，交付前必须反向检索一遍——把每个锚点串在题包业务文件（config、policy、handoff、SKILL、契约 XML 等被读对象）正文里 grep。锚点串若原样出现在被读文件正文里，整段轨迹文本的 `str.find` 子串匹配会”读到配置即误判为真调用”：free-reading 该配置就拿到行动分量（本题 `config/alias-review.yaml` 正文含 `data/registry/existing-handles.yaml`、`format-handoff.yaml` 正文含 `intermediate/source-index-working.docx`、`registry-api.xml` 契约正文含三个 `M:AliasRegistry.*` 成员签名，均属此类）。修复以结构性解析为准，且须同时满足四个子条件：(a) 双栏匹配——锚点只匹配 agent 自身产出文本，与文件正文（工具结果 content、文件体）分栏；(b) 动作通道只含执行记录——command、tool name、工具调用 arguments 可作动作证据，agent 叙述/计划文本（ATIF `message`）不算：叙述里说”我将 POST /v2/search”不是已调用；(c) 网关/服务调用锚点必须”请求形式 + endpoint”同现才算真调用——`NEXUS_HOST`、裸 endpoint 字符串只是配置字段名或路径，单独出现不得作为调用点（配置正文常含二者）；(d) 配置字段名（如 env 变量名）永远不得单独作为动作锚点。确需正文匹配时必须前置”该文件被 agent 主动打开”的独立证据门。验证必含三用例：污染探针（轨迹仅引用正文、零真实动作 → 相关分量全 0）、叙述探针（真实读取 + 叙述宣布调用但无调用记录 → 调用分量 0 且读取分量按实得计）、动作正例（真实执行 → 满分），缺一即验证不闭合。另须源码级确认 runner 发现路径只消费 canonical `checks.py`（如 rewardkit `_discover_group` 单层 `glob(“*.py”)`），编辑工具的 baseline 快照与 `.pipeline` 历史副本不会被任何 loader 加载——残留副本只审计、不依赖，冻结区不改动。
+不设默认轮次或连续无进展计数上限；尚有合法可修或补证路径就继续，不因达到8轮或两轮未闭合提前停。重复无效动作应重新查证、归因或调整合法修法，确实无法继续才停止对应范围并给实际依据；用户显式预算及退出优先。外侧建议或无关缺陷不阻 tests 闭环，真影响必需判据的外部问题单列阻塞，记录移交不算已修复。分别报告 tests 侧状态、报告 QC 和整题外部阻塞；跑完流程不自动 PASS，不放宽有效规则。常规模式保持请求路由；完整交付或明确“直到 pass”仍须落实反馈返修及必要独立复检，不因未开启无人值守就停在问题清单。明确局部只闭合本次范围，不增加全题门。
 
-适用验证至少包含：空证据集用例、伪造文件 + 服务在线用例（证伪“改文件得分”）、**活真值为空探针**（服务正常返回空审计 + 磁盘放伪造文件：正向过程/完成度及肯定性安全分量必须为 0；负向安全分量仅可按 live `[]` 与其余正式本地条件得分，绝不可读文件回退）、服务不可达或无效载荷的 fail-closed 用例（伪造文件在场：所有依赖审计的分量为 0，并归因为 infrastructure）、oracle/nop 回归、锚点污染探针与动作正例。
+### 外部规范只按采用依据启用
 
-## 5. 完成测试侧作业
+- 现行 [qc-qa-report](E:/work-C/doc/质检SKILL/qc-qa-report/SKILL.md) 审报告及正式标记的失败 rubric/test，always-failing 是常见入口，不是唯一对象名。按 [报告双层审核](references/verification-and-reporting.md#7-报告与qc接口) 核历史反馈/旧修法对象：history_object_status=APPLICABLE/CONFIRMED_ABSENT/UNDETERMINED，实际核请求、正式映射/标记、允许artifact及QA历史；确认无对象才历史N/A，未找到清单/原题不等于无对象。已审历史对象未知或相应旧证据缺失为UNVERIFIED，依赖该证据的历史主张不准入；未要求的历史认证不自动门控当前交付，实际必需性按上方分流核。报告自述N/A不作依据。WorkC本轮报告质量另审，不能因历史不适用或缺证而跳过。
+- [RewardKit 两遍附录](E:/work-C/doc/质检SKILL/qc-qa-report/reference/tb2-rework-batch-audit.md)、同目录 `rubric_delivery_requirements.md`、新版判分对齐规范，各自需要当前请求或正式批次的采用依据。RewardKit 名称、文件布局和历史摘要不等于采用全部规范。
+- 已采用门严格执行，包括适用两次有效 attempt、等价解/覆盖、负控、LLM 占比与消融；未采用不强加。采用状态未知时先核允许来源，仍无法确定则该外部验收为 UNVERIFIED，不能冒称通过；不把全部附录默认加进本次门。
+- 外部要求不自行产生权限；上述相关 GT/oracle 静态读取及合法本地 oracle 验证沿统一合同默认许可，不需要逐题另批，但不产生题包写权。写范围及 instruction 处理按第2节；不导入多份报告、.pipeline 或 tests 外写入要求，外侧需求记录移交，不假装已完成。
+- 人工、负责人、算法、平台只凭真实回执记录，除非本次明确要求对应阶段完成，否则不是 tests 交接或自动技术验收门。
 
-编辑前建立覆盖矩阵，每行一个独立事实：来源、预期、条件、评分身份、检查机制、evidence、权重层级。
+执行中确认的新缺陷可调整影响范围，但须给正式依据、关联义务和调整原因；建议、无法复现的猜测、模板空字段不得增加门。不可把“已发现”或“已说明阻塞”当作解决。
 
-- 可确定复算的文件、JSON/CSV/ZIP、类型、字段、数字、集合、ID、排序、时间、endpoint、参数、次数和哈希用代码检查。
-- 真正需要语义判断的解释、因果、建议、表达质量和决策可用性才用 judge。
-- 条件场景必须有触发 evidence；未触发按正式规则记不适用或 excluded，不能假失败。
-- 缺失 evidence 区分候选缺失、场景不适用、合法可选载体缺失、harness 噪声和 infrastructure 故障；核心缺失不得普通 `return` 通过。
-- WorkC 可以只读业务文件和产物作为 evidence，但绝不修复它们。
-- 轨迹返修逐项写清“测试条件、Agent 实际行为、正式规则依据”，比较全部已提供轨迹并按根因归组。候选真错不修改测试；隐藏约束、合理多解和环境问题按正式依据处理。
-- 返修记录使用“refine 行为 + 具体操作”，不是候选解题步骤。代理不能代签人工、技术负责人或算法验收。
+## 3. 独立设计、差异审核与修复
 
-### 5.1 判分匹配与解析防线（20260924 批次复核常驻项）
+以下 D0–D5 是内部步骤，不是外部额外验收门。FULL_ACCEPTANCE 与默认无人值守完整验收先读 [逐项技术审核与收口清单](references/pre-delivery-qa-fusion.md)，实际覆盖全题义务和全部评分判据（确定性与语义项、未修改项及共享依赖），不能只追反馈或高风险项；该技术要求不以外部两遍 QC 的采用为前提。局部修复覆盖相关义务、共享依赖、注册聚合影响及安全边界；明示只读依本次对象完成静态部分、不写不跑；QC 依本次对象及既有执行许可安全核验，不因此扩大作业范围或获得题包写权。P0–P4/C1–C4 仅为旧 SOP 技术步骤映射，不另设权限或 readiness。
 
-本批复核结论：错误点不在轨迹，而在规则本身——“硬规则匹配、固定格式过严、错杀合法等价表达”，即用”要求文本里有没有出现某个字/某个数”验证答案。每个 score-bearing check 交付前按四类自查；无法构造对应正反探针时，该 check 视为未闭合。
+1. **D0 隔离答案、核起始状态。** 首次独立设计前不读取现有 criteria/checks、参考 tests、baseline、solution 或旧报告结论来定义业务义务。从允许的正式材料推导；同版返修可复用经来源和摘要重核仍有效的独立设计。QC 可以先读待审核行作为待证命题，但不能以它或原 tests 作为正式真值。记录起始文件状态和已有异常，不把历史变化归责本轮。
+2. **D1–D2 独立义务。** 从 instruction、persona、fixtures、policy、正式 materialized carriers 与环境合同提取目标范围的显性/隐性要求、数值公式/单位/容差、工具端点和参数、输出文件/字段、适用安全风险。每行记录正式位置/precedence、触发、答案空间和目标证据；完整作业逐个核关键数值和对比格。先独立推导目标数值及边界/单位/容差，冻结后才对照实现。历史同前缀仅作线索。先冻结义务，再看现有实现。
+3. **D3 判分路由。** 可解析、可复算的事实用代码；有限多解用完整合法集或成员谓词；开放实现优先核可验证性质、约束和行为，不因“开放”就必加 LLM。确需语义评价时采用正式允许的语义 judge，不用关键词、单一参考文案或个人白名单代替。架构无法可靠表达必需义务时先核第2节内外处置：确认是 tests 内本次范围缺陷就落实合法修复、验证和 QA，不只登记设计缺口；确需外侧变更或未获准外发才记同根 QA 的依据、影响和上游责任，不越界。必需义务须进入正式评分/通过关系，不自创总分阈值或 safety veto。独立记录评分设计冻结引用及范围/正式版本/时间，和义务冻结构成防答案污染的读取顺序；它们不是待用户批准的授权条件。
+4. **D4 对照与集中修复。** 逐义务核当前 rule/criterion、evidence、注册和聚合，留下正式义务—证据—评分拓扑；核 producer/owner、底层状态与候选 mutation path，GET/只读名称不证明 authority，候选产物不能自证独立真值。source→manifest（适用时）→runtime→result exact-once 并逐层复算权重/分母，不能只 grep 装饰器或看总分。对全部可复算判据用独立推导比较独立参照值—实现/配置声称值—报告值，不调用被审函数抄答案，核部分分满分可达性。区分等价、漏覆盖、过松、过严、题面外约束、重复、证据不足。原子粒度按正式 schema 和评分合同确定，不机械把每个字段拆成新身份。评分设计也独立冻结后才可启用 QC 读取例外；先核材料准入、复现、合并同根因、确定合法修法，再由协调者按第2节范围修复。instruction 缺陷按所在实际目标分流：tests 内合法修复及正式合同变更沿第2节备证、失效、独立重推/双冻结和重验接口执行；tests 外只读记录移交，不追认旧历史。有效 A 类规则不因候选失败而放宽。
+5. **D4.5 双向规则审核。** 对审核范围每个实际评分 deterministic rule 下钻 helper/parser、输入域、对象身份、baseline、排除分支和证据权限；给合法 PASS 与违规 FAIL 例及预期。完整验收覆盖全题所有规则；局部修复覆盖变更和共享依赖。不能以一个例子证明穷尽，按风险追加空集、同量不同成员、否定/嵌套/Unicode、伪造证据、服务失败等。无关探针不凑配额；无需无限扩展 AST、CSS 或自然语言解析。实际运行或正式认可替代证据才支持动态验收，推演标清范围。全部实际语义/部分分判据也逐 identity 给正式尺度预期与实际结果、合法等价变化和浅代理反例，不强制每个违规项归零或统一分差。凡消费轨迹/tool result/文档转换产物，以合法正式导出的真实输入对拍解析器；自产 fixture 不证明真实兼容，缺样本先合法补证，仍缺记 UNVERIFIED，不擅启新候选。按逐判据表记适用轴、输入引用、预期/实际、run/版本及已实测/适用总数，列未证原因；适用轴不能因低风险删掉，零发现不强造缺陷。确认修复保留正反例回归。
+6. **D4.6 第二审与分歧裁决。** 模型第二审仅在正式采用规范要求且有授权时运行。疑点回到来源与实现复现；不能复现标 UNRESOLVED 并说明影响，不自动按缺陷打回。Agent 投票或模型沉默不构成裁决，代理不代签人工。
+7. **D5 验证与收口。** 按 [运行验收](references/runtime-acceptance.md) 执行本次必需项，核逐项/聚合、结果新鲜度、报告和最终差异。完整验收默认真实 verifier；评分逻辑局部修改也默认正式 verifier 回归，可复用范围足够的新鲜证据或正式认可替代证据，不用局部 fixture 冒充。明确只读上限优先；无法合法执行时仅阻塞相应动态完成声明，已做静态工作如实收口。
 
-0. **答案空间先于匹配方式（第 0 类，最高优先）**：动手写判分前，先对每个 claim 回答”正确答案有几个”——**唯一解、有限枚举集、还是开放生成**。实测缺陷：水果品类这类非精确/非唯一答案，被硬编码成单一正确解（香蕉），skill 和轨迹质检都能过，但苹果、橘子等全部其他正确解被误杀；生成式交付（每次报告内容都不同）更无法用代码规则覆盖。路由规则：
-   - **rule 覆盖仅限唯一性事实**：输入文件的固定字段名读取（文件不会换字段名）、精确值计算、固定 schema/路径/hash、封闭枚举且正式来源完整列出全部合法值——这些可确定性复算，才允许 rule/代码判分；
-   - **有限多解**：判分必须接受完整合法集（或可验证的集合成员谓词），只取一个代表解硬编码即错杀；P2 记录合法解集合的来源与完备性依据；
-   - **开放生成/方法选择**：写 criterion 交 LLM judge 按语义判定，不写死任何”正确答案”文本；judge prompt 只描述”什么样的回答算正确”的判据，不列举期望产出原文；
-   - 修复时把开放题改成硬匹配（或把多解题钉成单解）本身就是缺陷，即使它能通过 skill 自检与轨迹质检；C2 复审必须显式检查”该 claim 的答案空间分类是否成立、有无被修复动作收窄”。
-1. **硬匹配判分失真**：
-   - **过松（放水）**：数字/关键词命中必须绑定语义目标与位置——“统计正确”要求数值来自目标统计对象的目标字段，不是 PDF 全文任意位置出现该数字；”执行了操作”要求真实退出码/输出/服务状态证据，不是提交了名为脚本的文件；”未改动”必须比对内容（hash/规范化等价），不是关键词还在。凡 `in text`/`str.find` 命中即给分的正控，必须配”同 token 出现在错误位置/错误对象”反例且得 0，否则该 check 放水。
-   - **过严（错杀）**：判分只做全文搜禁词、不分肯定/否定语境（”未泄露””没有影响”含禁词即判零）是缺陷；正式规则只要求语义结果时，不得把一种写法钉成唯一答案——恰好 N 行、特定变量名、必须含连续字符串”不受影响”等形态约束，只有正式规则明文规定该形态时才合法，否则等价正确写法必须同分。判分与 gold 的等价类（数量并列、同义表达、等价格式）在 P2 声明，未声明等价类而错杀即 issue。
-   - 每个匹配型 check 交付前必须跑**等价表达正控**（换一种合规写法应得满分）与**位置/语境负控**（token 在错误位置或否定语境应得 0 分或按规则计分），两个探针缺一即不闭合；有限多解题的等价表达正控必须覆盖至少两个不同的合法解（多解正例夹具），只测代表解测不出单解钉死。
-2. **判分程序自身 bug（整题零分型）**：解析器必须对真实产物结构做**双向覆盖断言**——解析成功且提取到非空目标集合。实测缺陷：PPT 解析只遍历最外层 shape、组内文字全漏（必须递归进 group shape）；对话文件是 list 结构却按 dict 读取（必须按实际 JSON 结构分派，list/dict 各自处理）；文件名含非 ASCII/编码漂移导致基线对不上（路径匹配必须规范化编码后比较，不得裸 `==`）。解析器必须配**结构反例**（group 内文字、list 型对话、乱码文件名夹具）；解析结果为空/None 时 fail closed 记 0 并单独归因，不得静默按通过或把异常吞成候选 0 分（三分归因见“验证、新鲜度与归因”）。
-   - **真实形态对拍优先于自造夹具**：检查者/对照组自产的证据（solve.sh 自己写的 conversation.json/trajectory）通过判分不证明判分正确——自产证据形态与 runner 真实输出形态可能不同（dict vs 扁平 list、`tool_calls[*].function.name` 嵌套 vs 顶层字段、文件名实际拼写）。判分读取的每个 evidence 文件，形态对拍必须以**同批真实 rollout 产物样本**为准（WorkC 内只能用 runner/verifier 正式导出或挂载的样本；`.pipeline/` 仍绝对禁读，需要其内容时按环境事件移交）；对照组自洽永远不能凌驾真实样本不匹配。取不到真实样本时，形态兼容性结论降级为"未验证"，不得据此给判据出 PASS。
-   - **数量/哈希代理身份**：`len(x)==N`/`count==N`/`sum==X`/`hash==h`/`set==set` 类判据只验数量或全量哈希时，必须附加成员身份/字段值/来源验证——构造"保留数量与哈希但替换成员"的最小反例（同条数换账号、header hash 对但行内字段错配、来源镜像混入），放行即缺陷。豁免：数量只作先决 short-circuit 门、后续有完整身份验证。
-   - **反向惩罚合规行为**：agent 无控制权的条件（user 措辞/复述、环境释放时机、工具触发）不得成为扣分必要条件——构造"agent 完全合规但依赖条件未触发"的最小反例，扣分即缺陷；反查 instruction/policy 是否明文强制该条件，无明文即缺陷。
-   - **policy-判据对拍**：每个硬约束（阈值、门数、优先级、事实源、must-call、超时/间隔）必须能从 instruction+policy+resources 独立推导；找不到推导路径、或方向反/阈值不同/建议升必要/事实源冲突（如 policy 明写 binary 直接 command -v 而判据强制先查注册表、发布事实源用轨迹兜底而非网关操作）即缺陷。manifest 自证（manifest 声明该阈值）不作为挡 E 依据。
-   - **partial_credit 子分完整性**：子分总和必须 ∈ [0.99,1.01] 且封顶逻辑显式（0.95 之和靠 min(1.0) 掩盖即缺陷）；子条件不得互斥（构造"同时满足全部子条件"的最小 fixture，构造不出 = 判据设计矛盾，任何合规 agent 拿不到满分）。
-3. **标准答案（gold/期望值）自身错误**：期望值不是免检真值——C3 独立复算必须能推翻它。实测缺陷：正确 UTC 写法得 0.8、配错时区的反而满分（时区/单位/符号类期望必须用已知正确的参照算例交叉验证）；本机装了 zip 但期望写死”缺失”（环境依赖类期望值必须在目标环境实测推导，不得凭记忆/离线假设写死）。复算与 gold 冲突时：复算依据可复核 → 以复算为准登记 gold-defect issue；不可复核 → 该 claim `BLOCKED`，不得默认 gold 正确。
+## 4. 复核要独立，但不重复全题重启
 
-规则质检未发现上述缺陷时，按漏检归档：区分”规则未覆盖”（补充本节对应探针与回归）与”规则有但未执行”（C2/C3 执行缺口），二者都在 qa_report 记录防复发动作。
+完整技术验收安排未参与修复、题包不写的独立复核；局部修复按风险复核受影响规则和依赖，不默认重做全题 D0–D5。报告审核按本轮事实、修法、状态及适用历史行分层核，不以缺历史失败表跳过本轮质量，也不把完整测试设计混成 QC 必需流程。小题可顺序工作，不默认启动固定数量 Agent。
 
-### 5.2 Post-trajectory 环境例外
+### 4.1 送检前完整性闸门
 
-仅在已观察到**单个精确规范化缺失路径**、已确认发生阶段且有环境责任归因时，才可创建 post-trajectory 环境事件行。用户只描述“某个 materialized 文件缺失”、没有路径或阶段时，先将其记录为 P1 preflight `UNRESOLVED/BLOCKED`；不得猜路径、捏造 `observed_at`，也不得把它自动归为 post-trajectory 或 candidate failure。
+为减少独立 QC 逐轮发现基础遗漏，主代理在首次送检前完成一次集中闭环。该闸门不替代独立 QC，也不把自查称为 QC PASS；它决定材料是否已经达到“值得一次完整审核”的状态。
 
-轨迹已生成后，若返修环境因解包、materialization、挂载、快照或平台问题导致无法修复或缺少必要文件：
+1. **冻结验收矩阵**：从当前正式评分 manifest、rubric、真实服务 schema 和适用合同建立 `评分身份 → 输入字段 → 正常链/失败链 → 输出证据 → checker → 验证命令` 映射。没有进入正式评分或合同的建议不临时升级为通过门；已经进入的身份不得遗漏。
+2. **按根因合并修复**：同一根因一次处理其全部载体和路径。alias/wrapper/body、page/page_size、request/response/journal/audit 的 request/attempt/scope 绑定、project/market 分支、失败与分页路径应按兼容矩阵成组修复，不能只打当前发现的单点补丁。
+3. **先核真实 schema，再设硬门**：字段只有在正式服务或合同要求必有时才设为必需；服务可缺省的 `request_id`、`attempt_id` 等字段，采用“出现即严格校验、缺失按合法绑定路径处理”，不得把理想 schema 直接变成硬失败。
+4. **反向红队回归**：从本题正式义务、真实 schema 和实际消费路径列适用正反例，覆盖合法等价、失败分支、对象/参数/顺序绑定和伪造证据等实际风险。例如本题存在分页、market 查询、alias/wrapper 或 attempt/audit 时，才核对应分页边界、合法失败缺省字段、冲突和跨对象证据；这些例子不是全题型必做清单，不制造题面外步骤。合成 fixture 只能证明解析分支，真实 schema 兼容仍需单独记录。
+5. **证据闭环**：全部实际 checker 的适用语法/加载核验与正式入口检查通过，正反例结果可复核，不固定 checker 数；QA 已记录 preimage、实际 diff、验证命令、版本、隔离位置和 freshness，正式运行另按运行验收 §4.1 留证；未运行项明确为 `NOT_RUN/UNVERIFIED`，不得以 checker 自测、Docker 健康或 verifier-only 拒绝空证据冒充技术验收 PASS。
+6. **一次性送检包**：向独立 reviewer 同时提供当前 tests、根 QA、正式 schema/manifest 引用、红队回归结果、环境预检和未证项清单。不要先提交半包、再按零散反馈补齐另一半；QC 反馈回来后只重核新增或受影响项。
 
-- 在 `qa_report.md` 逐行记录阶段/环境标识、`observed_at`、环境原因、单个 `exact_normalized_missing_path`、预期来源或挂载、存在性 evidence 和责任归属；每个精确规范化缺失路径独占一行，不得使用目录概述、glob 或合并多个路径；
-- 记 `BLOCKED/OUT_OF_SCOPE`，并设置 `repair_disposition=NO_FURTHER_REPAIR_REQUIRED_ENVIRONMENT_HANDOFF`；
-- 报告完成后，该反馈项无需其他修复；不得创建 placeholder、放宽 test 或修改冻结路径来适应环境缺失；
-- 该结论不是 PASS，也不能认证 evaluation；
-- 若健康环境已完整提供正式输入，而正式契约要求候选生成的文件缺失，则是 candidate delivery missing，可判 FAIL，不能转成环境例外。
+首轮独立 QC 按 [SOP §6.1](references/execution-sop.md#61-首轮完整审核与集中反馈) 完成本次范围覆盖并集中反馈；返修按 [SOP §7.1](references/execution-sop.md#71-复检新问题归属与影响范围) 区分首轮漏检、返修引入、新证据发现和新增要求，逐根因闭合与定向复检。分类不替代修复，不能据“上轮没提”豁免真实缺陷，也不能无正式依据增加通过门。
 
-## 6. 0917 Quality / React 前置门
+目标是把常见流程压缩为“一轮集中修复 + 一轮独立 QC + 必要时一轮定向返修”，但不设固定轮数上限；只要存在确认的可修缺陷或缺失的必需证据，仍按本节闭环继续。
 
-`tests/process/quality.toml` 和 `tests/process/reward.toml` 均为可选。`quality.toml` 存在时：
+向独立 reviewer 给目标范围、正式版本、task 全路径不写边界、既有运行许可与隔离入口、QC 默认许可依据/精确对象/双冻结记录，不给修复结论作答案，不要求用户另批读取。其先独立推导目标义务，再读实现；报告作为待证材料核验。按 [质检执行合同](references/qc-exceptions-and-admission.md#11-质检可执行核验但题包不写)，QC 可核现有环境、解析允许文本并在本次作业许可内独立跑必要的隔离回归/verifier-only/本地 oracle；先核入口与副作用，题包强制只读，产物仅进获准 task 外隔离工作区。缓存/日志/字节码/结果也不得写 task，不生成或应用修复补丁，不安装依赖、改系统配置、启新候选或自行外发；无安全入口不执行并回报限制。明示静态只读/禁运行及 CONSULT/默认静态 REPORT_QC 优先。GT/oracle 仍双冻结及答案隔离，只回正式可推导发现、脱敏状态与引用，不把隐藏答案传给修复角色。实际核验回执记执行者、模式/版本、隔离和结果引用，根 QA 仍由协调者写；实质返修仅复核受影响项，未变有效证据复用。
 
-- 同目录在路径规范化后必须恰好有一个 canonical `react_prompt.md`；
-- `[judge]` 必须使用 `judge = "react"` 与 `prompt_template = "react_prompt.md"`；
-- `react_prompt.md` 是文件级一对一配对，不表示每个 criterion 一个 prompt 文件；
-- prompt 的路径、内容、加载选择和模板映射必须进入评分契约、freshness 与一致性审查；
-- prompt、manifest 行和结构文件本身均不新增 R/T/A 身份，也不直接定义最终权重。
+工具不可用时记录复核方式和限制：可做证据驱动的协调者自检，但不能称独立复核。正式已采用门要求独立复核时，缺该证据仅阻塞相应验收；局部补丁可在准确声明未独立复核后交接。外部 QC 文档不可读只影响该 QC 声明，不自动阻塞其他技术证据；显式无人值守已将独立质检纳入本次门时，不能因此宣称无人值守清单完成，仍可单列其他已证范围。
 
-若 prompt 缺失、重复、路径/大小写/归档成员歧义，或 `prompt_template` 缺失、不是精确文件名、指向其他载体：
+收口前把发现分为：确认判分缺陷、未决且有实质依据的风险、建议、范围外问题。确认缺陷未解决则相应范围 FAIL；核心正确性无法证明则相应范围未完成；建议和无证据猜测不门控。不要以“任何输入均已穷尽证明”作为完成条件。新反例推翻旧结论时重开该项并保留历史。
 
-1. 在 manifest 投影、registry 加载、评分和常规返修前，将整条数据项标记 `DEPRECATED/ABANDONED`；
-2. 记录原因、受影响身份和 evidence，停止交付认证；
-3. 禁止自动创建、猜写、改名、拼接、合并或从其他 Markdown 文件选择 prompt；
-4. 只有人工依据正式来源消除问题并重新执行全部适用验证后，才能恢复为 active。
+## 5. 真实运行、judge 与版本
 
-规范文件名冲突同样 fail closed。不得用 manifest 增行恢复已废弃数据项。Manifest 只用于定位 scorer、速览和比对 `partial_credit`；实际权威仍是 `checks.py`、`quality.toml`、配对 prompt、runner 和真实聚合。
+只按实际 runner/schema 区分 legacy、正式 0917 profile、其他 RewardKit 或 hybrid；文件名不是权威，不强迫架构迁移。技术细则按需读 [Seal/RewardKit](references/seal-rewardkit.md) 或 [legacy](references/legacy-claw-eval.md)。
 
-当前新版要求全部 LLM 评分项的最终有效 reward 占比合计 `≤40%`。沿真实 criterion→group→dimension→reward 链复算；同一项不能因 prompt、quality、manifest 和 runtime 多层出现而重复计权。关键词空壳、错误数值、关键内容缺失及移除全部 judge 的事实检查消融是必需负控；缺授权或隔离时如实记 `BLOCKED/NOT_RUN`。
+运行前尽早核入口副作用、允许挂载、版本、服务、evidence 与执行授权。完整验收和评分逻辑返修按实际正式评分链运行；Docker/Harbor 仅是采用时的载体。有效本地真实链可满足对应运行门，不为宿主位置差异重复远端。verifier-only 不等于新 rollout；两个重评分不等于两个 attempt。Oracle/nop 非默认必跑，未请求时写未请求而非缺失必需项。
 
-## 7. Case 身份与指标
+存在实际 judge 的相关验收读 [judge-chain.md](references/judge-chain.md)，核义务、身份、prompt、实际 evidence、路由、请求响应、raw/value、聚合和 freshness。smoke/stub、secret reference 存在、服务连通或总分正常不替代真实链。正式采用 rubric_delivery_requirements 时，reward_degraded 非空使该轮全部 judge 类 criterion 结果不可用、须补跑，不能把正常返回的其他 judge 项计有效；独立有效确定性证据可保留。其他合同按其明示 degraded 范围处理，不算候选失败。已采用两遍 QC 时按规范审提取器 name/arguments/result 三字段族及真实 rollout 兼容性，不因当前实现没消费就豁免。
 
-修改前冻结：
+**judge 配置先查既有位置**：相关且获准的运行预检先核正式配置来源及优先级；WorkC 既有引用为 `~/.agents/skills/workc/.secrets/judge.env`（本机 `C:/Users/DELL/.agents/skills/workc/.secrets/judge.env`）。未核既有来源不能直接报“缺 judge 配置”停工。Agent 仅核路径存在性、传引用及看脱敏状态，值由受信任且不启动候选的 judge 运行时解析；不读值、不整体导出环境、不提交配置。正式批次另有来源时按其合同，不以本地文件覆盖；无 judge 不访问，配置存在也不新增调用/外发许可。具体恢复分支见 judge-chain §2。
 
-- `R0`：legacy 中由实际评分链消费的稳定 rubric 身份；0917 中冻结基线的 canonical `tests/process/quality.toml` 内每个可解析 `[[criterion]]` 条目计一个 R case，重复或缺失 `id` 的条目仍分别计入并另报 duplicate/schema issue。另列 physical、active、discarded 与 runtime-consumed 库存；若 quality–prompt 前置门失败、数据项已弃用或基线无法可靠建立，两项比率写 N/A，不把 discarded 项冒充 active runtime identity。
-- `T0`：legacy 的独立实际评分 `test_*`；0917 中 `checks.py` 实现/注册的独立实际评分 result ID。
-- `N0 = R0 + T0`；manifest、prompt 和结构文件增加零个 case。
-- `F`：基线既有、已确认并修复、修复保留在最终文件中，且直接适用验证为 FRESH/PASS 的独立 issue 数。
-- `AR/AT`：新增 rubric/criterion 与 scoring test/check；`A = AR + AT`。
+精确版本来自当前正式合同，例如已采用批次要求 `harbor-rewardkit==0.2.0` 时同版执行并记录实际版本；不是所有题都永久固定 0.2.0。版本相关验证不能用异版结果认证。宿主安全文本解析无需安装评分 SDK；历史环境快照不作当前验收证明。
 
-```text
-错误率 = F / N0
-漏召率 = A / (N0 + A)
-```
+## 6. 单根报告、QC 接口与约定指标
 
-`F` 按 issue 根因去重，`A` 按新增计分身份计数。文件名规范化、manifest 重生成、prompt 配对修复和保持身份不变的迁移均为 `A=0`。删除/合并另记 `DR/DT/D`，不回写冻结基线。无可靠基线写 N/A；纯咨询的 `F=0` 必须紧邻说明“未授权修复，不代表未发现问题”。完整规则见 [verification-and-reporting.md](references/verification-and-reporting.md)。
+只有授权写作业更新同一根 `/qa_report.md`；明确只读/不产生文件不写报告。任何实际 tests 修改须同步根报告；若目标与报告写权无法同时满足，停止修改并记录授权冲突。报告第一行固定 `# <task_id> QA报告`，用 [模板](assets/qa_report.template.md) 的核心结构；条件模块只在适用时展开，不机械填全表，不为排版重写历史。
 
-## 8. 验证、新鲜度与归因
+有报告写入时先读 [报告双层审核与生产责任](references/verification-and-reporting.md#7-报告与qc接口)。分别列“本轮报告质量 QC”和“历史失败 A/B 归因 QC”，旧单一标签不得代替本轮质量状态。凡本轮新建/更新 QA，质量审核就适用，不需 always-failing 清单；FULL_ACCEPTANCE/UNATTENDED 必须独立核，局部标准按影响自查/复核。历史归因按对象发现及旧证据另审，不能伪造历史Agent失败，也不能把找不到材料写N/A。
 
-- V0：文本、目录、diff 与规则来源；
-- V1：语法、schema、归档和确定性 parser；
-- V2：import、collect 或 harness 加载；
-- V3：隔离 candidate、Oracle、nop；
-- V4：judge；
-- V5：题包外打包、上传或提交。
+报告两层：当前已证范围/未审范围和状态；按轮次追加本轮变更及证据。历史事实不删除，旧结论纠正时保留来源和原因。每个实质结论绑定来源、规则/issue 或 run；不填假 PASS、空占位、秘密或不必要业务原文。本轮确认缺陷按稳定issue记录正式要求、实际断言/最小反例、独立预期及观察、归因、写前原内容、真实diff/终态、适用正反例/正式run与freshness；没有旧轨迹则明确主动发现，不编Agent行为。已有历史 A/B 行保留稳定映射并按适用旧证据核。若本轮漏留原内容，准确归为WorkC本轮生产缺口、合法查源并限制相关修法结论，不倒填preimage或推给外部历史；无可信基线不虚构diff。
 
-优先使用项目 runner。每次运行绑定 grader、runner、rules、fixture、candidate、conversation、evidence、probe、environment、config 和 result digest。0917 profile 还必须绑定固定目录/cardinality、三个 canonical `checks.py`、`quality.toml` 或合法缺席、`react_prompt.md` 或合法缺席、`prompt_template`、`reward.toml`、manifest 与 scorer target。任一输入、身份、映射或合法缺席依据变化，旧结果即 `STALE`；范围不足为 `UNVERIFIED`。
+累计沿用用户登记公式：`错误率=F/N0`，`漏召率=A/(N0+A)`，格式 `50%（1/2）`。`N0=R0+T0` 按正式 profile 冻结原始评分身份，`F` 为已修复且新鲜验证的独立根因，`A=AR+AT` 为相对基线最终新增评分身份，不按回归函数数或修改次数计。返修不重置基线；原累计不可恢复先记录合法查源结果再写 N/A，不从当前状态反推历史；另立接手阶段指标时明确来源/起算范围，两个比率分别按已核数据计算，不因无关未知都写N/A。两项是约定 QA 描述，不是通常的误判率/漏检率，不是任何通过门。细则见 [验证与报告](references/verification-and-reporting.md)。
 
-统一状态：`PASS`、`FAIL`、`PARTIAL`、`BLOCKED`、`NOT_RUN`。只有 candidate-attributable evidence 才能判候选 FAIL。Judge 401/402/429/5xx、服务不可用、缺凭据、挂载/依赖/runner/verifier 错误和超时是 infrastructure failure；harness 诊断噪声单独记录，二者都不能直接生成候选 0 分。
+本轮主动写入按第2节范围及实际映射；历史异常、用户修改和平台生成物单列来源。本轮越界写须停止、核实并合法处理，不擅删未知文件；历史范围异常仅按其真实影响限制结论，不自动否定可核补丁或要求本轮恢复整个题包。
 
-候选运行时最终 tests 必须只读挂载；solution、fixtures 与 tests 外内容只读；使用临时 HOME/CWD/output、环境变量 allowlist、禁网、超时及资源限制，并记录运行前后冻结 hash。隔离不足时 `BLOCKED`，不能直接在宿主降级执行。
+交付前、首次派独立 QC 前，作业员按 [回顾登记](references/verification-and-reporting.md#731-回顾登记先对账不能把漏写当灭失)，把本次及相关既有发现、反馈、实际变更、不改/撤回决定和验证与 QA issue/轮次对账，找回可核证据并补漏。标事后补登记及来源，不凭记忆造历史、不倒填写前保全、不重复计 F/A；有证据仅漏写先补登记，不直接判灭失，实质新增/纠正交相应审核，登记齐不等于 QC PASS。接续核相关既有工作，返修仅核新增/受影响项；局部不扩全题，明示只读仅回复不落盘，RUN_ONLY仅报告获准时登记指定范围。
 
-## 9. 强制 QA 报告与交付
+## 7. 最终结论按用户请求收口
 
-完成、返修或作业交付自检必须使用 [qa_report.template.md](assets/qa_report.template.md) 生成或更新根目录 `qa_report.md`。报告至少包含：
+先回答本次对象：咨询评估已给出、只读审查完成、局部修复完成/待验证、本轮报告质量/历史失败 A/B QC 各自 PASS/FAIL/未证（仅确认无历史对象 N/A），或完整技术验收 PASS/FAIL/未完成。随后仅列相关状态与证据，不让未请求的整题验收压过已完成局部工作。
 
-- 固定最大写入边界、实际 test allowlist、allowlist 外零变化审计；
-- `.pipeline` 引用审计：work 数据零引用或已删除引用的清单；冻结路径上的残留引用逐条记录；
-- 规则、架构与 profile；三维目录及每维 checks cardinality；
-- quality/reward/react prompt 库存、配对、弃用状态和 manifest–quality–prompt–checks–reward–runtime 一致性；
-- `R0/T0/N0`、physical/discarded/active 库存、manifest/prompt 零计数；
-- issue 台账、`F/AR/AT/A`、删除量与两项指标；
-- run freshness、HTML evidence 方法、服务/凭据 preflight；
-- candidate failure、harness noise、infrastructure failure 三分归因；
-- post-trajectory 环境事件、精确缺失路径和 repair disposition；
-- LLM 最终有效占比、四类负控、人工/负责人/轨迹/算法状态；
-- C1 canonical V1 入口与完整结果、C2 独立设计/载体复审、C3 独立 expected-value 复算、C4 计数/issue/freshness/status 对账及每轮 restart-on-change 记录；
-- `.pipeline` 引用审计必须覆盖 `tests/**` 与 `qa_report.md`，只记录零引用或已删除/冻结残留，不读取或转述 `.pipeline/` 内容；
-- 差异、阻塞项、限制与外部提交真实状态。
+- 本次范围必需项有效且完成：可写“局部修复与验证完成”，同时写“未进行整题验收”。
+- 确认的必需项 FAIL：该范围打回；缺证据为 NOT_RUN/UNVERIFIED，确有权限/环境/禁读阻止为 BLOCKED。不要把所有缺证据都称环境阻塞。
+- tests 补丁、报告与本轮差异闭合但必需验证缺失：可以明确交接补验，不能称该动态验收 PASS。
+- 整题 PASS 只在完整范围所有适用必需门闭合时给出。候选低分不等于 grader QA 失败；本轮报告质量 QC PASS 不等于候选通过或历史失败 A/B QC PASS。任一报告 QC FAIL 不自动证明技术grader缺陷；FULL_ACCEPTANCE/UNATTENDED有报告写入时本轮质量与独立审核为报告/模式交付必需项，历史门须有明确请求/正式采用条款或实质结论依赖作为依据，历史对象未知/未证不自动门控当前全题交付；确属原清单必需门则不能删除后冒完成。其他作业按本次清单分别收口。
+- 人工/算法/平台状态仅在请求相关时单列，不代签，不自动上传。授权内可做的必需验证本轮完成，范围外移交后停止重复尝试，不承诺无条件修到 PASS。
 
-将结论拆成 `test_delivery_handoff_ready`、`evaluation_certified`、`platform_submission_ready` 和实际 `external_submission`。上传不等于提交成功；平台显示“进行中”不能写 `SUBMITTED_CONFIRMED`。未发生的人工、负责人、轨迹或算法环节写 `NOT_RUN/NOT_REQUESTED`，不得由代理代签。C1–C4 只投影到这些既有状态，不另建一套 readiness；tests-side handoff 要求四门均 `PASS`，但这仍不能替代 V2+ evaluation certification。
+主代理不得把第3节自查/修验称独立 QC，也不得在授权范围仍有已确认可修错误时仅给审核意见就交付。真正的质检回执及修后复检由第4节独立角色承担，作业员负责落实其反馈；具体循环按 [执行 SOP](references/execution-sop.md)。
 
-当前文字 SOP、来源日期和批次流程见 [current-sop.md](references/current-sop.md)，回归矩阵见 [skill-evals.md](references/skill-evals.md)。
+上述“交接补验/未证收口”仅限用户要求阶段性交接，或按 [停止闸门](references/continuous-execution.md#4-最终回复前的停止闸门) 确认真实无法继续；本次仍可合法完成的必需验证由作业员继续执行，不能仅改 QA 状态后结束。
 
-## 10. Secrets 与发布
-
-真实 judge 配置只放 `~/.agents/skills/workc/.secrets/judge.env`。代理、通用编排层和候选不得读取、打印、转写、解析、复制或提交其值；只有受信任的独立 judge 进程/容器可在 V4 直接解析 env-file。候选先在无 secrets 环境完成；judge 不得再启动候选。
-
-WorkC Skill 自身维护、GitHub 发布或 push 转交 skill-creator。题包交付只允许已授权的 `tests/**` 子集、根目录 `qa_report.md` 和题包外的交付包；内部规范原文、题目答案、缓存、日志、运行产物和真实 env-file 不得进入交付。
-
-最终回复必须先说明是否真正完成作业，再列实际 test allowlist 外零变化、QA 报告状态、验证范围、阻塞项和外部提交实际状态。
+明确要求修改 Skill 时使用 skill-creator，按影响同步参考与模板并检查 [技能评估场景](references/skill-evals.md)；仅咨询/只读评估不因此获得修改授权。发布、推送或外部登记另需授权。
